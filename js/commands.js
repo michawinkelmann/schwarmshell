@@ -1556,9 +1556,9 @@ GG.
           } else if(!state.mentor.alias_made){
             out += `„Kann man so ein… Shortcut machen?
 `
-                + `Ich will nicht immer ls -l tippen. Ich will Macro.
+                + `Ich will nicht immer ls -l tippen. Ich will Macro. ll muss reichen.
 `
-                + `Hint: alias ll="ls -l"  und dann ll`;
+                + `Hint: alias`;
           } else if(state.mentor.alias_made && state.mentor.students_helped < 3){
             state.mentor.students_helped = 3;
             // Nach 3/3: Abschluss-Prozess spawnen

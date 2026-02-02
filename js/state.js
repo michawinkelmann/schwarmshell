@@ -1,7 +1,7 @@
 // state.js — save/load state and phase progression
-  const STORAGE_KEY = "schwarmshell_all_phases_v4";
+  const STORAGE_KEY = "schwarmshell_all_phases_v5";
   const INITIAL_STATE = {
-    v: 4,
+    v: 5,
     startedAt: null,
     phase: 1,
     cwd: "/home/player",
@@ -25,6 +25,9 @@
       report_given:false,
       report_final:false,
       report_followup:false,
+      job_arc_unlocked:false,
+      job_arc_started:false,
+      job_arc_done:false,
       talked:{},
     },
     fragments: { f1:null, f2:null, f3:null },
@@ -46,6 +49,7 @@
       traceMeter: { gym:0, igs:0 },
       badge:false
     },
+    jobArc: { active:false, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false }, startedAt:null },
     superpc: { active:false, returnCwd:"" }
   };
 
@@ -54,7 +58,23 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return structuredClone(INITIAL_STATE);
       const s = JSON.parse(raw);
-      if(typeof s !== "object" || s.v !== 4) return structuredClone(INITIAL_STATE);
+      if(typeof s !== "object") return structuredClone(INITIAL_STATE);
+
+      // Migration: v4 -> v5
+      if(s.v === 4){
+        const merged = structuredClone(INITIAL_STATE);
+        // shallow merge known top-level fields
+        for(const k of Object.keys(s)) merged[k] = s[k];
+        merged.v = 5;
+        // deep-merge flags/mentor/sidequest
+        merged.flags = Object.assign({}, INITIAL_STATE.flags, (s.flags||{}));
+        merged.mentor = Object.assign({}, INITIAL_STATE.mentor, (s.mentor||{}));
+        merged.sidequest = Object.assign({}, INITIAL_STATE.sidequest, (s.sidequest||{}));
+        merged.jobArc = Object.assign({}, INITIAL_STATE.jobArc, (s.jobArc||{}));
+        return merged;
+      }
+
+      if(s.v !== 5) return structuredClone(INITIAL_STATE);
       return s;
     }catch(e){
       return structuredClone(INITIAL_STATE);
@@ -101,6 +121,7 @@
     badge_history:  { name:"History Detective", desc:"Du hast aus Fehlern gelernt. W.", img: svgData("Badge: History","rewind","library") },
     badge_alias:    { name:"QoL Wizard", desc:"Alias = Shortcut. Speedrun vibes.", img: svgData("Badge: Alias","macro unlocked","arena") },
     badge_mentor:   { name:"Shell Coach", desc:"Du hast den Squad gecarried (nett).", img: svgData("Badge: Mentor","Phase 4 clear","arena") },
+    badge_job:      { name:"Real‑Life Starter", desc:"Du hast den Sprung aus dem Game ins echte Leben gemacht.", img: svgData("Badge: Job","Phase 5 clear","office") },
   };
 
   function award(id){

@@ -375,6 +375,9 @@ function allowedCommands(){
       base = ["help","hint","ls","cd","pwd","cat","clear","echo","grep","mkdir","touch","rm","cp","mv","find","talk","quests","inventory","reset","man","chmod"];
     } else if(state.phase === 4){
       base = ["help","hint","ls","cd","pwd","cat","clear","echo","grep","mkdir","touch","rm","cp","mv","find","talk","quests","inventory","reset","man","chmod","ps","top","kill","history","alias","mentor_clear"];
+    } else if(state.phase >= 5){
+      // Phase 5: Alles aus 1–4 ist freigeschaltet (Real Life).
+      base = ["help","hint","ls","cd","pwd","cat","clear","echo","grep","mkdir","touch","rm","cp","mv","find","talk","quests","inventory","reset","man","chmod","ps","top","kill","history","alias","mentor_clear"];
     }
 
     // "assemble" is only meaningful after all fragments are collected
@@ -495,6 +498,18 @@ function allowedCommands(){
     }
     if(state.phase >= 3 && pattern === "BUG" && outText.match(/^\s*\d+:/m)){
       state.flags.inspected_boss = true;
+    }
+
+    // Phase 5 — Job Quest: SNACKMASTER (Marker muss im Output auftauchen)
+    if(state.phase >= 5){
+      const pp = String(pattern||"").toLowerCase();
+      const oo = String(outText||"").toLowerCase();
+      if(pp.includes("allergene") && oo.includes("ok:job_snackmaster")){
+        if(!state.jobArc) state.jobArc = { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+        state.jobArc.active = true;
+        state.jobArc.quests = state.jobArc.quests || {};
+        state.jobArc.quests.snackmaster = true;
+      }
     }
     saveState();
     renderObjectives();
@@ -758,12 +773,14 @@ QUEST UPDATE:
             "Tipp: Erst finden, dann mit cat/grep reinschauen."
           ],
           "locate": [
-            "Lokalisieren – Suche nach Dateinamen",
-            "Wenn du nur einen Teil des Namens kennst, nutze Platzhalter (*).",
-            "Beispiele:",
-            "  find -name \"*lord*\"",
-            "  find -name \"*report*\"",
-            "Danach: cat <datei> oder grep <muster> <datei>."
+			"Lokalisieren – Suche nach Dateinamen",
+			"Wenn du nur einen Teil des Namens kennst, nutze Platzhalter (*).",
+			"Du musst immer einen Startpfad angeben.",
+			"Beispiele:",
+			"  find . -name \"*lord*\"",
+			"  find /network -name \"*report*\"",
+			"  find ~/workbench -name \"*.txt\"",
+			"Danach: cat <datei> oder grep <muster> <datei>."
           ],
           "bug": [
             "Bug-Zeile finden – Zeilennummern nutzen (grep -n)",
@@ -867,6 +884,80 @@ QUEST UPDATE:
             "  cd <ort>",
             "  talk <person>",
             "Optional: cat <dokument> um den Abschluss-Text zu lesen."
+          ],
+
+          // Phase 5 — Real Life (nur Hinweise/Beispiele, keine Komplettlösungen)
+          "arbeitsamt": [
+            "Arbeitsamt – Einstieg",
+            "Du brauchst hier meistens: Ort wechseln + mit der richtigen Person reden.",
+            "Beispiele:",
+            "  cd /arbeitsamt",
+            "  ls",
+            "  cat start.txt",
+            "  talk beamter",
+            "Tipp: Wenn du nicht weiterkommst, lies die quest.txt pro Firma unter /real_life/."
+          ],
+          "beamter": [
+            "Beamter – Gespräch/Quest-Arc starten",
+            "Wenn ein NPC dir Aufträge gibt, ist der nächste Schritt oft: 'geh zu Ort X' oder 'lies Datei Y'.",
+            "Beispiele:",
+            "  talk beamter",
+            "  cd /real_life",
+            "  ls",
+            "Hinweis: Notier dir die Firmennamen – die sind deine 'Quest-Hubs'."
+          ],
+          "snackmaster": [
+            "SNACKMASTER – Audit-Log prüfen",
+            "Jansen weiß nur: irgendwo im Audit-Log steht der Allergene-Abschnitt – aber nicht mehr wo.",
+            "Dein Ziel: finde die passende Zeile/den Marker im Log und geh damit zurück zu Jansen.",
+            "Beispiele:",
+            "  cd /real_life/snackmaster",
+            "  ls",
+            "  cat quest.txt",
+            "  cat haccp_audit.log",
+            "Wenn du etwas Auffälliges findest: talk jansen."
+          ],
+          "ars": [
+            "A‑R‑S Recycling – Datei besorgen (ohne Schritt-für-Schritt)",
+            "Ziel: Den Abholplan finden und in deiner Workbench ablegen, damit Frau Wiebe ihn sieht.",
+            "Hinweise:",
+            "  • Schau in den Firmen-Ordner und lies quest.txt.",
+            "  • Wenn du Dateien 'nicht findest': erst suchen, dann lesen.",
+            "Beispiele (allgemein, nicht 1:1 übernehmen):",
+            "  find <bereich> -name \"<dateiname>\"",
+            "  ls ~/workbench/<ordner>",
+            "Wenn die Datei in deiner Workbench liegt: talk wiebe."
+          ],
+          "ohlendorf": [
+            "Ohlendorf‑Technik – Ticket lesen (ohne Rechte-Rezept)",
+            "Ziel: Ticket in deine Workbench holen und so einstellen, dass du es lesen darfst.",
+            "Hinweise:",
+            "  • Manche Dateien sind absichtlich 'zu' (Permissions).",
+            "  • Arbeite immer in ~/workbench (nicht am Original).",
+            "Beispiele (generisch):",
+            "  ls -l <datei>        → Rechte ansehen",
+            "  chmod <modus> <datei>→ Rechte ändern (Modus hängt vom Fall ab)",
+            "Wenn du den Token gelesen hast: talk neele."
+          ],
+          "berndt": [
+            "Möbelfabrik – Performance retten (ohne Prozessname)",
+            "Ziel: Herausfinden, was die CPU frisst, und den richtigen Prozess stoppen.",
+            "Hinweise:",
+            "  • Erst identifizieren, dann handeln (nicht 'blind' beenden).",
+            "  • Prozess-Tools zeigen dir Name + PID.",
+            "Beispiele (generisch):",
+            "  ps",
+            "  top",
+            "  kill <PID>           → nur wenn du sicher bist",
+            "Danach: talk tom."
+          ],
+          "jobangebot": [
+            "Jobangebot – Abschluss",
+            "Nach allen Firmen-Aufträgen musst du oft zum 'Hub' zurück und den Abschluss triggern.",
+            "Beispiele:",
+            "  cd /arbeitsamt",
+            "  talk beamter",
+            "Wenn was fehlt: quests zeigt dir, welche Firma noch offen ist."
           ]
         };
 
@@ -885,6 +976,9 @@ QUEST UPDATE:
   help - find | locate | bug | fix | hotfix | chmod | boss
   help - report
   help - noah | emma | leo | mentor_clear
+  help - arbeitsamt | beamter
+  help - snackmaster | ars | ohlendorf | berndt
+  help - jobangebot
 
 Tipp: quests zeigt dir die Quest-Keys in [eckigen Klammern].` };
           }
@@ -1062,13 +1156,44 @@ case "man":{
       case "cd":{
         const targetArg = args[0] || "~";
         const target = normPath(targetArg);
+        // Story-Gate: Arbeitsamt / Real-Life erst nach finalem Zeugnis sichtbar.
+        const gateUnlocked = !!(state.flags && state.flags.job_arc_unlocked);
+        if(!gateUnlocked && (target === "/arbeitsamt" || target.startsWith("/real_life"))){
+          return { ok:false, out:`cd: no such file or directory: ${targetArg}` };
+        }
         const node = getNode(target);
         if(!node || node.type!=="dir") return { ok:false, out:`cd: no such file or directory: ${targetArg}` };
         state.cwd = target;
+
+        // Phase 5 startet erst beim Betreten des Arbeitsamts.
+        if(target === "/arbeitsamt" && state.flags && state.flags.job_arc_unlocked && state.phase < 5){
+          state.phase = 5;
+          state.flags.job_arc_started = true;
+          if(!state.jobArc) state.jobArc = { active:false, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false }, startedAt:null };
+          state.jobArc.active = true;
+          state.jobArc.stage = Math.max(0, state.jobArc.stage||0);
+          state.jobArc.startedAt = state.jobArc.startedAt || now();
+          row("📎 Neuer Story-Arc unlocked: Phase 5 — Real Life.", "ok");
+          row("Tipp: cat /arbeitsamt/start.txt  und dann talk beamter", "p");
+        }
+
+        // Quest-Spawn: Möbelfabrik hat einen neuen Lag-Prozess, sobald die Quest aktiv ist.
+        try{
+          if(target === "/real_life/berndt_moebel" && state.phase >= 5){
+            state.processes = state.processes || [];
+            const has = state.processes.some(p => p && p.name === "cnc_sim");
+            if(!has){
+              state.processes.push({ pid: 909, name: "cnc_sim", cpu: 96, mem: 256 });
+            }
+          }
+        }catch(e){}
         saveState();
         promptEl.textContent = promptText();
         renderLocation();
         renderPhasePill();
+        try{ renderHeaderSub(); }catch(e){}
+        renderObjectives();
+        renderRewards();
         return { ok:true, out:"" };
       }
 
@@ -1099,6 +1224,18 @@ case "man":{
             award("badge_builder");
           }
         }
+
+        // Phase 5 — Ohlendorf: Ticket gelesen
+        try{
+          if(state.phase >= 5 && (path === "/home/player/workbench/ohlendorf/ticket_net.txt" || path === "/home/player/workbench/ticket_net.txt")){
+            if(String(content||"").includes("JOB_OHLENDORF_OK")){
+              state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+              state.jobArc.active = true;
+              state.jobArc.quests = state.jobArc.quests || {};
+              state.jobArc.quests.ohlendorf = true;
+            }
+          }
+        }catch(e){}
         saveState();
         renderObjectives();
         progressPhaseIfReady();
@@ -1313,6 +1450,174 @@ const maybeAppendRumor = () => {
           return { ok:true, out };
         }
 
+        // --- Phase 5 NPCs (Arbeitsamt / Real Life) ---
+        if(id==="beamter"){
+          // Nur nach finalem Zeugnis
+          if(!(state.flags && state.flags.job_arc_unlocked)){
+            out += `„...ich hab grad Pause. Komm wieder, wenn du überhaupt ein Zeugnis hast.“`;
+            saveState();
+            return { ok:true, out };
+          }
+          if(state.phase < 5){
+            out += `„Du bist noch nicht mal hier eingecheckt. Geh erst rein: cd /arbeitsamt“`;
+            saveState();
+            return { ok:true, out };
+          }
+
+          state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false }, startedAt: now() };
+          state.jobArc.active = true;
+          state.flags.job_arc_started = true;
+
+          const q = state.jobArc.quests || {};
+          const allDone = !!(q.snackmaster && q.ars && q.ohlendorf && q.berndt);
+          if(allDone){
+            if(!state.flags.job_arc_done){
+              state.flags.job_arc_done = true;
+              // Jobangebot reinschreiben
+              try{
+                const jo = getNode("/arbeitsamt/jobangebot.txt");
+                if(jo && jo.type==="file"){
+                  jo.content = `JOBANGEBOT — FINAL\n\nBetreff: „Shell‑Allrounder*in (m/w/d)“\n\nDu hast:\n- Logs gescannt (grep)\n- Dateien gefunden (find)\n- Ordnung gebaut (mkdir/cp)\n- Rechte gefixt (chmod)\n- Prozesse gekillt (kill)\n\nKurz: Du kannst Probleme lösen.\n\nGlückwunsch. Du bist offiziell ready für Real Life.\n\n(Und ja: das war Phase 5. GG.)`;
+                }
+              }catch(e){}
+              award("badge_job");
+            }
+            out += `„Aha.“\n\n`;
+            out += `„Alle Quests erledigt. Ich... bin beeindruckt. Ein bisschen.“\n`;
+            out += `„Hier. Dein Jobangebot. Bitte nicht knicken. Das ist... Papierarbeit.“\n\n`;
+            out += `Tipp: cat /arbeitsamt/jobangebot.txt`;
+            saveState();
+            renderObjectives();
+            return { ok:true, out };
+          }
+
+          // Nächste offene Quest ansagen
+          let next = null;
+          if(!q.snackmaster) next = "snackmaster";
+          else if(!q.ars) next = "ars_recycling";
+          else if(!q.ohlendorf) next = "ohlendorf_technik";
+          else if(!q.berndt) next = "berndt_moebel";
+
+          out += `„Nummer gezogen? Egal."\n`;
+          out += `„Du willst Arbeit? Ich hab Arbeit."\n\n`;
+          out += `Deine nächste Station: /real_life/${next}\n`;
+          out += `Geh hin: cd /real_life/${next}\n`;
+          out += `Dann: cat quest.txt  und talk mit der Person dort.\n\n`;
+          out += `Status: SNACKMASTER ${q.snackmaster?"✅":"⏳"} · A‑R‑S ${q.ars?"✅":"⏳"} · Ohlendorf ${q.ohlendorf?"✅":"⏳"} · Berndt ${q.berndt?"✅":"⏳"}`;
+          saveState();
+          renderObjectives();
+          return { ok:true, out };
+        }
+
+        if(id==="jansen"){
+          if(state.phase < 5) {
+            out += `„Wir sind grad im Stress. Komm später."`;
+            saveState();
+            return { ok:true, out };
+          }
+          const q = (state.jobArc && state.jobArc.quests) ? state.jobArc.quests : {};
+          // Auto-detect completion: if the ticket is readable in Workbench (either in /ohlendorf or directly in ~/workbench)
+          try{
+            if(!q.ohlendorf && state.phase >= 5){
+              const paths = ["/home/player/workbench/ohlendorf/ticket_net.txt", "/home/player/workbench/ticket_net.txt"];
+              for(const p of paths){
+                const rf = readFileChecked(p);
+                if(rf.ok && String(rf.content||"").includes("JOB_OHLENDORF_OK")){
+                  state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+                  state.jobArc.active = true;
+                  state.jobArc.quests = state.jobArc.quests || {};
+                  state.jobArc.quests.ohlendorf = true;
+                  break;
+                }
+              }
+            }
+          }catch(e){}
+          // Accept if player placed the plan either in ~/workbench/ars/ OR directly in ~/workbench/
+          try{
+            const p1 = "/home/player/workbench/abholplan_2026.csv";
+            const p2 = "/home/player/workbench/ars/abholplan_2026.csv";
+            if(!q.ars && state.phase >= 5){
+              if(getNode(p1)?.type==="file" || getNode(p2)?.type==="file"){
+                state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+                state.jobArc.active = true;
+                state.jobArc.quests = state.jobArc.quests || {};
+                state.jobArc.quests.ars = true;
+              }
+            }
+          }catch(e){}
+          if(q.snackmaster){
+            out += `„Etikett stimmt. Allergene sind drin. Du hast uns grad ... gerettet."\n\n`;
+            out += `„Sag dem Beamten, er soll aufhören zu gähnen."`;
+            saveState();
+            return { ok:true, out };
+          }
+          out += `„HACCP-Audit ist kurz vorm Explodieren."\n`;
+          out += `„Wenn du die richtige Zeile findest: ich brauch den Marker."\n\n`;
+          out += `Tipp: Im Audit-Log gibt’s einen Abschnitt zu Allergenen – such die passende Stelle und notier dir den Marker.`;
+          saveState();
+          return { ok:true, out };
+        }
+
+        if(id==="wiebe"){
+          if(state.phase < 5){
+            out += `„Wir fahren hier keine Schul-Quests."`;
+            saveState();
+            return { ok:true, out };
+          }
+          const q = (state.jobArc && state.jobArc.quests) ? state.jobArc.quests : {};
+          if(q.ars){
+            out += `„Plan ist da. Ich seh ihn. Ich atme wieder."\n\n`;
+            out += `„Geh zurück zum Arbeitsamt. Die lieben Papier."`;
+            saveState();
+            return { ok:true, out };
+          }
+          out += `„Der Abholplan ist irgendwo in den Docs."\n`;
+          out += `„Find ihn. Kopier ihn in deine Workbench. Schnell."\n\n`;
+          out += `Tipp: Such nach dem Dateinamen in den Unterlagen und lege eine Kopie in deiner Workbench ab.`;
+          saveState();
+          return { ok:true, out };
+        }
+
+        if(id==="neele"){
+          if(state.phase < 5){
+            out += `„Wir sind grad im Netz-Notfall."`;
+            saveState();
+            return { ok:true, out };
+          }
+          const q = (state.jobArc && state.jobArc.quests) ? state.jobArc.quests : {};
+          if(q.ohlendorf){
+            out += `„Yes. Rechte gefixt, Ticket gelesen. Das war ... actually clean."\n\n`;
+            out += `„Okay, zurück zum Arbeitsamt mit dir."`;
+            saveState();
+            return { ok:true, out };
+          }
+          out += `„Ich hab ein Ticket, aber es darf nicht jeder lesen."\n`;
+          out += `„Kopier’s in deine Workbench, dann fix die Rechte. Erst dann lesen."\n\n`;
+          out += `Tipp: cat quest.txt`;
+          saveState();
+          return { ok:true, out };
+        }
+
+        if(id==="tom"){
+          if(state.phase < 5){
+            out += `„Die Maschinen laufen. Oder auch nicht."`;
+            saveState();
+            return { ok:true, out };
+          }
+          const q = (state.jobArc && state.jobArc.quests) ? state.jobArc.quests : {};
+          if(q.berndt){
+            out += `„Lag ist weg. Produktion wieder smooth. Stabil."\n\n`;
+            out += `„Arbeitsamt wartet schon mit der nächsten Nummer."`;
+            saveState();
+            return { ok:true, out };
+          }
+          out += `„Der Rechner hängt. Ich seh nur noch 2 FPS."\n`;
+          out += `„Finde heraus, welcher Prozess alles ausbremst – und mach das Problem weg."\n\n`;
+          out += `Tipp: Erst Prozessliste ansehen, dann den passenden Prozess gezielt stoppen.`;
+          saveState();
+          return { ok:true, out };
+        }
+
         if(id==="semrau"){
           if(state.phase===1){
             out += `„Okay, ich sag’s wie’s ist: Das hier ist maximal sus.\n`
@@ -1460,7 +1765,13 @@ GG.
                   + `Der Drucker ist leise. Kein Flackern. Kein Glitch.\n\n`
                   + `„Du hast nicht nur gelernt.\nDu hast anderen geholfen.\nUnd das… zählt.“\n\n`
                   + final + `\n\n`
-                  + `Danke fürs Spielen von SchwarmShell.`;
+                  + `Danke fürs Spielen von SchwarmShell.\n\n`
+                  + `Und jetzt mal Real Talk: Mit dem Zeugnis kannst du dich auch endlich um’n Job kümmern. 😅\n`
+                  + `Check mal das Arbeitsamt, die haben safe Quests für dich.\n\n`
+                  + `Neuer Ort unlocked: cd /arbeitsamt`;
+
+              // Real-Life Arc freischalten
+              state.flags.job_arc_unlocked = true;
               saveState();
               renderObjectives();
               return { ok:true, out };
@@ -2168,7 +2479,10 @@ if(t.includes("zeugnis abholen")) return "report";
 
         const open = OBJECTIVES
           .filter(o=>o.phase===state.phase && !o.done(state))
-          .map(o=>`- [${keyFor(o.title)}] ${o.title} → ${o.hint}`)
+          .map(o=>{
+            const k = (o.key || keyFor(o.title) || "quest");
+            return `- [${k}] ${o.title} → ${o.hint}`;
+          })
           .join("\n");
 
 // Globale Story-Reminders (auch wenn Phase gewechselt wurde)
@@ -2277,6 +2591,36 @@ const outText = (extra + open).trim();
         if(args.length<2) return { ok:false, out:"cp: missing operand" };
         const r = cp(args[0], args[1]);
         if(!r.ok) return { ok:false, out:`cp: ${r.err}` };
+
+        // Phase 5 — Job Quests triggers
+        try{
+          const src = normPath(args[0]);
+          let dst = normPath(args[1]);
+          // Keep triggers in sync with fs.cp(): if destination is a directory,
+          // the effective target becomes <dir>/<basename(src)>
+          const dn = getNode(dst);
+          if(dn && dn.type==="dir") dst = dst.replace(/\/$/,"") + "/" + src.split("/").pop();
+
+          // A-R-S: Plan in Workbench kopieren
+          if(state.phase >= 5 && src === "/real_life/ars_recycling/docs/abholplan_2026.csv" && (dst === "/home/player/workbench/abholplan_2026.csv" || dst.startsWith("/home/player/workbench/ars/") || dst === "/home/player/workbench/ars/abholplan_2026.csv")){
+            state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+            state.jobArc.active = true;
+            state.jobArc.quests = state.jobArc.quests || {};
+            state.jobArc.quests.ars = true;
+          }
+
+          // Ohlendorf: Ticket ins Home kopieren, dann erstmal ohne Leserechte (chmod-Quest)
+          // Akzeptiere sowohl ~/workbench/ohlendorf/ als auch direkt ~/workbench/
+          if(state.phase >= 5 && src === "/real_life/ohlendorf_technik/ticket_net.txt" && (dst === "/home/player/workbench/ohlendorf/ticket_net.txt" || dst === "/home/player/workbench/ticket_net.txt")){
+            const p = ensurePerm(dst);
+            // Ohne owner-read darf cat nicht lesen -> Spieler*in MUSS chmod nutzen.
+            p.mode = "000";
+            p.exec = false;
+            state.perms[dst] = p;
+          }
+        }catch(e){}
+        saveState();
+        renderObjectives();
         return { ok:true, out:"" };
       }
 
@@ -2438,6 +2782,15 @@ const outText = (extra + open).trim();
           award("badge_mentor");
           row("🎉 Mentor-Run clear! Du hast 3/3 geholfen — und jetzt ist wirklich alles still.", "ok");
           row("Du hast jetzt: Game Sense + Bash. Das ist einfach unfair stark. 😌", "p");
+        }
+
+        // Phase 5 — Job Quest: Berndt (cnc_sim)
+        if(state.phase >= 5 && proc.name === "cnc_sim"){
+          state.jobArc = state.jobArc || { active:true, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false } };
+          state.jobArc.active = true;
+          state.jobArc.quests = state.jobArc.quests || {};
+          state.jobArc.quests.berndt = true;
+          row("✅ Produktion wieder smooth. cnc_sim ist weg.", "ok");
         }
         renderObjectives();
         return { ok:true, out:`killed ${pid} (${proc.name})` };
@@ -2889,6 +3242,8 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
       trimmed = (state.aliases[firstTok] + (rest ? " " + rest : "")).trim();
     }
 
+
+
     state.lastCmds.unshift(trimmed);
     state.lastCmds = state.lastCmds.slice(0, 120);
     state.historyIndex = 0;
@@ -2975,9 +3330,13 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
   }
 
   function intro(){
-    row("╔══════════════════════════════════════════════════════════════╗");
-    row("║  SchwarmShell · Phasen 1–4 (Tutorial→Quests→Boss→Mentor)      ║");
-    row("╚══════════════════════════════════════════════════════════════╝");
+    // Clean, size-to-text welcome box (prevents trailing border artifacts)
+    const msg = "Willkommen im SchwarmShell";
+    const innerWidth = msg.length + 4; // 2 spaces left + 2 spaces right
+    const line = "═".repeat(innerWidth);
+    row("╔" + line + "╗");
+    row("║  " + msg + "  ║");
+    row("╚" + line + "╝");
     row("Du bist Schüler*in der KGS Schwarmstedt.");
     row("Und heute passiert etwas komplett Unnötiges:", "warn");
     row("Euer Schulsystem glitched — und die Welt fühlt sich an wie ein Game.");

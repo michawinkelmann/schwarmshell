@@ -1,7 +1,7 @@
 // SchwarmShell data (VFS, NPCs, Objectives) — extracted for maintainability
 (function(){
 const FS = {
-    "/": { type:"dir", children:["home","school","server_gate","arena","patchbay","network","boss","mentor_hub"] },
+    "/": { type:"dir", children:["home","school","server_gate","arena","patchbay","network","boss","mentor_hub","arbeitsamt","real_life"] },
     "/home": { type:"dir", children:["player"] },
     "/home/player": { type:"dir", children:["readme.txt","notizen.txt","backpack","workbench","sidequests","ipad_sync","lager"] },
     "/home/player/backpack": { type:"dir", children:["snack.txt"] },
@@ -693,7 +693,7 @@ diff /school/biologie/pflanzen_lore.txt /school/chemie/reaktionen.txt
     "/boss": { type:"dir", children:["README_BOSS.txt","patchlord.sh","patchlord.rules","loot.txt"] },
 
     "/home/player/readme.txt": { type:"file", content:
-`SchwarmShell — Alle Phasen (1–4)
+`SchwarmShell
 
 Du steuerst alles mit Bash-Befehlen (Englisch).
 Phase 1 (Tutorial):
@@ -1196,6 +1196,156 @@ talk leo`},
 - Sag nicht "Skill issue" (okay, manchmal schon, aber nett).
 - Lass sie selbst tippen, du gibst nur Hinweise.
 - Bash ist wie Gaming: erst Mechanics, dann Game Sense.`},
+
+
+    // --- PHASE 5: Arbeitsamt & Real-Life ---
+    "/arbeitsamt": { type:"dir", children:["start.txt","tickets.txt","jobangebot.txt"] },
+    "/arbeitsamt/start.txt": { type:"file", content:
+`ARBEITSAMT (Bürokratie DLC) — Phase 5
+
+Wenn du hier bist, hast du das Finale durch.
+Jetzt kommt der echte Endboss: Real Life.
+
+Start:
+talk beamter
+
+Hinweis:
+Alle Firmen-Quests sind unter /real_life/.
+Du wirst Bash-Skills aus Phase 1–4 brauchen.
+`},
+    "/arbeitsamt/tickets.txt": { type:"file", content:
+`Wartemarken-System:
+001  „Job?"
+002  „Noch mehr Formulare"
+003  „...warum sind Drucker immer laut?"
+
+Pro-Tipp:
+Wenn du jemanden fragst, bekommst du meistens ... eine neue Aufgabe.
+`},
+    "/arbeitsamt/jobangebot.txt": { type:"file", content:
+`(leer)
+`},
+
+    "/real_life": { type:"dir", children:["snackmaster","ars_recycling","ohlendorf_technik","berndt_moebel","README.txt"] },
+    "/real_life/README.txt": { type:"file", content:
+`REAL LIFE (Schwarmstedt & Umgebung)
+
+Hier ist nix mehr mit "Quest-Board in der Arena".
+Hier sind Firmen. Und echte Probleme.
+
+Ordner:
+- snackmaster
+- ars_recycling
+- ohlendorf_technik
+- berndt_moebel
+
+Tipp:
+Lies pro Firma: cat quest.txt  und sprich die Person dort an.
+`},
+
+    // SNACKMASTER
+    "/real_life/snackmaster": { type:"dir", children:["quest.txt","haccp_audit.log","scanner_hint.txt"] },
+    "/real_life/snackmaster/quest.txt": { type:"file", content:
+`SNACKMASTER — Auftrag
+
+Problem:
+In der HACCP-Prüfung fehlt die richtige Allergene-Zeile.
+
+Dein Move:
+Finde im Audit-Log den Abschnitt, in dem die Allergene erwähnt werden.
+
+Wenn du die richtige Zeile findest, steht da ein eindeutiger Marker.
+Dann: talk jansen
+`},
+    "/real_life/snackmaster/scanner_hint.txt": { type:"file", content:
+`Scanner sagt: "Ich weiß nur: irgendwo steht was zu Allergenen… aber ich hab vergessen, wo genau."`},
+    "/real_life/snackmaster/haccp_audit.log": { type:"file", content:
+`[08:01] Linie A: Temp OK
+[08:02] Linie B: Temp OK
+[08:03] Checkliste: Verpackung OK
+[08:04] Checkliste: Handschuhe OK
+[08:05] ALLERGENE: MILCH, GLUTEN, EI  (OK:JOB_SNACKMASTER)
+[08:06] Notiz: "Bitte nicht wieder das falsche Etikett"
+[08:07] Linie A: Temp OK
+`},
+
+    // A-R-S Recycling
+    "/real_life/ars_recycling": { type:"dir", children:["quest.txt","docs","containerlist.txt"] },
+    "/real_life/ars_recycling/docs": { type:"dir", children:["abholplan_2026.csv","hinweis.txt"] },
+    "/real_life/ars_recycling/quest.txt": { type:"file", content:
+`A‑R‑S Recycling — Auftrag
+
+Problem:
+Der Abholplan ist irgendwo in den Unterlagen, und Frau Wiebe braucht ihn in deiner Workbench.
+
+Dein Move:
+- Finde die Datei (der Name steht irgendwo hier im Ordner).
+- Lege eine Kopie in ~/workbench/ars/ ab (Ordner ggf. anlegen).
+
+Wenn der Plan in deiner Workbench liegt: talk wiebe
+`},
+    "/real_life/ars_recycling/containerlist.txt": { type:"file", content:
+`Containerliste:
+- Papier
+- Bio
+- Rest
+- Metall
+
+Wenn die Datei weg ist: alles Chaos.`},
+    "/real_life/ars_recycling/docs/hinweis.txt": { type:"file", content:
+`Hinweis:
+Wenn kopieren nicht klappt, fehlt oft nur ein Ordner in deiner Workbench.
+(Workflows: erst Ordner anlegen, dann Datei ablegen.)`},
+    "/real_life/ars_recycling/docs/abholplan_2026.csv": { type:"file", content:
+`Woche,Route,Start
+1,Schwarmstedt,06:00
+2,Gilten,06:00
+3,Essel,06:00
+4,Bothmer,06:00
+`},
+
+    // Ohlendorf-Technik
+    "/real_life/ohlendorf_technik": { type:"dir", children:["quest.txt","ticket_net.txt"] },
+    "/real_life/ohlendorf_technik/quest.txt": { type:"file", content:
+`Ohlendorf‑Technik — Auftrag
+
+Problem:
+Ein Support‑Ticket darf nicht einfach so gelesen werden – erst wenn die Rechte stimmen.
+
+Dein Move:
+- Hol dir das Ticket in deine Workbench.
+- Stell sicher, dass du es dort lesen darfst.
+- Lies den Token und bring ihn zu Neele.
+
+Wenn du den Token hast: talk neele
+`},
+    "/real_life/ohlendorf_technik/ticket_net.txt": { type:"file", content:
+`TICKET: VLAN-
+
+Wenn du das lesen kannst, hast du die Rechte gefixt.
+TOKEN: JOB_OHLENDORF_OK
+`},
+
+    // Arthur Berndt Möbelfabrik
+    "/real_life/berndt_moebel": { type:"dir", children:["quest.txt","produktion.txt"] },
+    "/real_life/berndt_moebel/quest.txt": { type:"file", content:
+`Arthur Berndt — Auftrag
+
+Problem:
+Ein Prozess frisst CPU wie ein Staubsauger. Produktion ist laggy.
+
+Dein Move:
+Schau dir laufende Prozesse an und finde den Übeltäter. Wenn du ihn eindeutig identifiziert hast: beenden.
+
+Wenn es wieder flüssig läuft: talk tom
+`},
+    "/real_life/berndt_moebel/produktion.txt": { type:"file", content:
+`Produktion:
+Wenn der Rechner hängt, hängt halt ... alles.
+
+Kleiner Tipp:
+Es gibt Commands, die dir laufende Prozesse zeigen.
+Wenn du die PID vom richtigen Übeltäter hast, kannst du ihn gezielt stoppen.`},
 
     "/mentor_hub/logs/lag.log": { type:"file", content:
 `[tick 001] fps: 144
@@ -1717,6 +1867,13 @@ const NPCS = {
     sauer: { name:"Thomas Sauer", role:"Technikausleihe", at:["/school/medienraum","/school/pcraum"] },
     hausmeister: { name:"Hausmeister", role:"Hausmeister", at:["/school/technikraum"] },
 
+    // Phase 5 — Real Life
+    beamter: { name:"Herr Langer", role:"gelangweilter Beamter", at:["/arbeitsamt"] },
+    jansen: { name:"Jansen", role:"Qualitätscheck (SNACKMASTER)", at:["/real_life/snackmaster"] },
+    wiebe: { name:"Frau Wiebe", role:"Disposition (A‑R‑S Recycling)", at:["/real_life/ars_recycling"] },
+    neele: { name:"Neele", role:"Netzwerk‑Support (Ohlendorf‑Technik)", at:["/real_life/ohlendorf_technik"] },
+    tom: { name:"Tom", role:"Schichtleitung (Arthur Berndt)", at:["/real_life/berndt_moebel"] },
+
     biringer: { name:"Christian Biringer", role:"Sozialarbeit", at:["/school/beratung"] },
     jeske: { name:"Simona Jeske", role:"Beratung", at:["/school/beratung","/arena"] },
     // Lehrerzimmer (neu) — zufällige Namen aus eurer Liste
@@ -1825,6 +1982,16 @@ const OBJECTIVES = [
     // Ende — Zeugnis-Arc
     { phase:3, title:"Zeugnis abholen", key:"report", hint:"Der Glitch ist weg? Dann ab ins Sekretariat: talk harries oder talk pietsch.", done:(s)=>!!s.flags.report_given },
     { phase:4, title:"Finales Zeugnis verdienen", hint:"Hol dir Bonus Points (Sidequest) und komm dann nochmal ins Sekretariat.", done:(s)=>!!s.flags.report_final },
+
+    // Phase 5 — Real Life
+    // NOTE: Phase 5 braucht explizite Quest-Keys, damit "help - <questkey>" funktioniert.
+    { phase:5, title:"Arbeitsamt betreten", key:"arbeitsamt", hint:"Nach dem finalen Zeugnis taucht ein neuer Ort auf. Geh hin: cd /arbeitsamt", done:(s)=>!!(s.flags && s.flags.job_arc_started) },
+    { phase:5, title:"Erstes Gespräch: Beamter", key:"beamter", hint:"Im Arbeitsamt wartet jemand auf dich: talk beamter", done:(s)=>!!(s.jobArc && s.jobArc.active) },
+    { phase:5, title:"Job-Quest: SNACKMASTER", key:"snackmaster", hint:"Im Audit-Log bei SNACKMASTER steht irgendwo die Allergene-Zeile mit einem Marker. Finde sie und sprich dann Jansen an.", done:(s)=>!!(s.jobArc && s.jobArc.quests && s.jobArc.quests.snackmaster) },
+    { phase:5, title:"Job-Quest: A‑R‑S Recycling", key:"ars", hint:"Bei A‑R‑S liegt eine wichtige Datei irgendwo im Firmenordner. Bring sie in deine Workbench und melde dich bei Wiebe.", done:(s)=>!!(s.jobArc && s.jobArc.quests && s.jobArc.quests.ars) },
+    { phase:5, title:"Job-Quest: Ohlendorf-Technik", key:"ohlendorf", hint:"Bei Ohlendorf klemmt’s an Zugriffsrechten. Hol dir das Ticket in die Workbench, prüf die Rechte und sprich dann Neele an.", done:(s)=>!!(s.jobArc && s.jobArc.quests && s.jobArc.quests.ohlendorf) },
+    { phase:5, title:"Job-Quest: Möbelfabrik", key:"berndt", hint:"In der Möbelfabrik läuft etwas aus dem Ruder (CPU). Finde den Verursacher-Prozess und stoppe ihn, dann zu Tom.", done:(s)=>!!(s.jobArc && s.jobArc.quests && s.jobArc.quests.berndt) },
+    { phase:5, title:"Abschluss: Jobangebot sichern", key:"jobangebot", hint:"Zurück zum Arbeitsamt: talk beamter", done:(s)=>!!(s.flags && s.flags.job_arc_done) },
 ];
 
 

@@ -19,7 +19,16 @@
   function listDir(path){
     const node = getNode(path);
     if(!node || node.type!=="dir") return null;
-    return node.children.slice();
+    let kids = node.children.slice();
+
+    // Story-Gating: Real-Life Bereich erscheint erst nach dem finalen Zeugnis.
+    if(path === "/"){
+      const unlocked = !!(state.flags && state.flags.job_arc_unlocked);
+      if(!unlocked){
+        kids = kids.filter(n => n !== "arbeitsamt" && n !== "real_life");
+      }
+    }
+    return kids;
   }
   function readFile(path){
     const node = getNode(path);
@@ -100,7 +109,12 @@
   }
   function cp(src, dst){
     const sPath = normPath(src);
-    const dPath = normPath(dst);
+    let dPath = normPath(dst);
+    // Allow copying into an existing directory (like real cp)
+    const dn = getNode(dPath);
+    if(dn && dn.type === "dir"){
+      dPath = dPath.replace(/\/$/,"") + "/" + sPath.split("/").pop();
+    }
     const sn = getNode(sPath);
     if(!sn || sn.type!=="file") return { ok:false, err:"cp: source not a file" };
     const w = writeFile(dPath, sn.content, false);
@@ -215,6 +229,25 @@
     "/mentor_hub": { name:"Mentor Hub — Squad Lobby", tag:"Phase 4", mood:"arena",
       desc:"Du spawnst in einer Lobby wie vor einem Raid. Drei Schüler-NPCs stehen rum und sehen aus, als hätten sie gerade zum ersten Mal ein Terminal geöffnet. Zeit für Mentor-Arc.",
       extra:"cat /mentor_hub/quests.txt  ·  cat /mentor_hub/students.txt  ·  talk noah" },
+
+    "/arbeitsamt": { name:"Arbeitsamt — Bürokratie DLC", tag:"Phase 5", mood:"office",
+      desc:"Neon ist weg. Jetzt ist’s… Grau. Wartemarken. Druckergeräusche. Du hast plötzlich das Gefühl, dein Leben ist ein Formular.",
+      extra:"cat /arbeitsamt/start.txt  ·  talk beamter" },
+    "/real_life": { name:"Real Life — Schwarmstedt & Umgebung", tag:"Jobs", mood:"yard",
+      desc:"Außerhalb der Schule. Keine Lehrer, keine Glocke — nur echte Aufgaben. Willkommen im Endgame.",
+      extra:"ls  ·  cd snackmaster" },
+    "/real_life/snackmaster": { name:"SNACKMASTER — Produktion", tag:"Quest", mood:"lab",
+      desc:"Fabrik-Vibe. Tiefkühl, Hektik, und irgendwo piept ein Scanner, als wäre er ein Metronom.",
+      extra:"cat quest.txt  ·  talk jansen" },
+    "/real_life/ars_recycling": { name:"A‑R‑S — Recycling", tag:"Quest", mood:"yard",
+      desc:"Container, Pläne, Listen. Alles hat seinen Platz — außer die Dateien natürlich.",
+      extra:"cat quest.txt  ·  talk wiebe" },
+    "/real_life/ohlendorf_technik": { name:"Ohlendorf‑Technik — Netzwerk", tag:"Quest", mood:"server",
+      desc:"Kabel, Schaltschränke, und jemand flucht leise über Rechte. Klingt vertraut.",
+      extra:"cat quest.txt  ·  talk neele" },
+    "/real_life/berndt_moebel": { name:"Arthur Berndt — Möbelfabrik", tag:"Quest", mood:"lab",
+      desc:"Holzgeruch, CNC-Sirren… und ein Prozess, der gleich alles laggy macht. Classic.",
+      extra:"cat quest.txt  ·  talk tom" },
     "/school/klassenraume": { name:"Klassenräume — Flur der Jahrgänge", tag:"School", mood:"school", desc:"Hier sind die Klassenräume nach Jahrgang–Schulform–Nummer benannt (z.B. 8G1, 9R1, 7H1).", extra:"cd /school/klassenraume/8G1" },
     "/school/klassenraume/7H1": { name:"Klassenraum 7H1", tag:"Hauptschule", mood:"school", desc:"Ein ganz normaler Raum… außer dass die Tafel manchmal wie ein Game-Overlay flackert. Alle tun so als wäre das normal. Klar.", extra:"ls · cat tafel.txt · talk <id>" },
     "/school/klassenraume/7H2": { name:"Klassenraum 7H2", tag:"Hauptschule", mood:"school", desc:"Ein ganz normaler Raum… außer dass die Tafel manchmal wie ein Game-Overlay flackert. Alle tun so als wäre das normal. Klar.", extra:"ls · cat tafel.txt · talk <id>" },
@@ -368,7 +401,8 @@
     }
 
     // Sidequest UI (erst sichtbar, wenn freigeschaltet)
-    if(state.sidequest && state.sidequest.unlocked){
+    // In Phase 5 (Arbeitsamt/Real-Life) verschwindet das wieder.
+    if(state.sidequest && state.sidequest.unlocked && state.phase < 5){
       const t = state.sidequest.traces || { gym:false, igs:false };
       const tm = state.sidequest.traceMeter || { gym:0, igs:0 };
       const alarm = state.sidequest.alarm || { gym:false, igs:false };
@@ -448,6 +482,7 @@
     if(state.phase===2) label += " · Quests";
     if(state.phase===3) label += " · Bossfight";
     if(state.phase===4) label += " · Mentor";
+    if(state.phase===5) label += " · Real Life";
     pill.textContent = "Phase: " + label;
   }
 

@@ -6,19 +6,22 @@
     renderRewards();
     renderPhasePill();
 
-// Header-Hinweis (Zeugnis-Druck) dynamisch je nach Story-Status
-const ps = document.getElementById("printStatus");
-if(ps){
-  if(state.flags && state.flags.system_fixed){
-    ps.textContent = "✅ Druckdienste online — Zeugnisse verfügbar.";
-    ps.classList.remove("warnInline");
-    ps.classList.add("okInline");
-  } else {
-    ps.textContent = "⚠️ Wegen eines System-Glitches können aktuell keine Zeugnisse gedruckt werden.";
-    ps.classList.remove("okInline");
-    ps.classList.add("warnInline");
-  }
-}
+    // Header-Text: ab Phase 5 anderer Vibe (andere Phasen bleiben unverändert)
+    try{ renderHeaderSub(); }catch(e){}
+
+    // Header-Hinweis (Zeugnis-Druck) dynamisch je nach Story-Status
+    const ps = document.getElementById("printStatus");
+    if(ps){
+      if(state.flags && state.flags.system_fixed){
+        ps.textContent = "✅ Druckdienste online — Zeugnisse verfügbar.";
+        ps.classList.remove("warnInline");
+        ps.classList.add("okInline");
+      } else {
+        ps.textContent = "⚠️ Wegen eines System-Glitches können aktuell keine Zeugnisse gedruckt werden.";
+        ps.classList.remove("okInline");
+        ps.classList.add("warnInline");
+      }
+    }
 
 
     if(!state.processes || !state.processes.length){
@@ -91,6 +94,7 @@ function commitUI(opts={}){
   const o = Object.assign({ loc:true, obj:true, rewards:true, phase:true }, opts||{});
   saveState();
   try{ if(o.phase) renderPhasePill(); }catch(e){}
+  try{ if(o.phase) renderHeaderSub(); }catch(e){}
   try{ if(o.loc) renderLocation(); }catch(e){}
   try{ if(o.obj) renderObjectives(); }catch(e){}
   try{ if(o.rewards) renderRewards(); }catch(e){}
@@ -101,6 +105,28 @@ function commitUI(opts={}){
     return base.filter(c=>COMMAND_REGISTRY[c]);
   }catch(e){
     return [];
+  }
+}
+
+
+// --- Header Subline (Phase 5 only) ---
+function renderHeaderSub(){
+  const elSub = document.getElementById("headerSub");
+  if(!elSub) return;
+
+  // Cache default HTML once so phases 1-4 remain exactly as authored in index.html
+  if(!elSub.dataset.defaultHtml){
+    elSub.dataset.defaultHtml = elSub.innerHTML;
+  }
+
+  if(Number(state.phase) >= 5){
+    elSub.innerHTML = [
+      "Schule fertig. Ab zur Arbeit: regel dein eigenes Leben — und guck mal, ob dir Schule überhaupt was gebracht hat. 😎 ",
+      "Tipp: <span class=\"kbd\">help</span> · <span class=\"kbd\">quests</span>"
+    ].join("");
+  }else{
+    // Restore original for phases 1-4
+    elSub.innerHTML = elSub.dataset.defaultHtml;
   }
 }
 

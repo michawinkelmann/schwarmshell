@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SchwarmShell</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="startOverlay" id="startOverlay" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+  <div class="startModal" id="startModal">
+    <h2 id="startTitle">Willkommen bei SchwarmShell</h2>
+    <p id="startDescription">Wie möchtest du starten?</p>
+    <div class="startActions" id="startActions">
+      <button class="btn" id="startNew">Neues Spiel</button>
+      <button class="btn" id="startAutosave">Autosave laden</button>
+      <button class="btn" id="startSavegame">Savegame laden</button>
+    </div>
+    <div class="savegameLoad" id="savegameLoad" hidden>
+      <label for="savegamePassphrase">Passphrase</label>
+      <input id="savegamePassphrase" type="text" autocomplete="off" spellcheck="false" placeholder="SS1...." />
+      <div class="startActions">
+        <button class="btn" id="savegameConfirm">Laden</button>
+        <button class="btn" id="savegameCancel">Zurück</button>
+      </div>
+      <p class="small" id="savegameLoadError" aria-live="polite"></p>
+    </div>
+  </div>
+</div>
+
+<div class="tutorialOverlay" id="tutorialOverlay" hidden></div>
+<div class="tutorialBubble" id="tutorialBubble" hidden>
+  <p id="tutorialText">—</p>
+  <button class="btn" id="tutorialBtn">Weiter</button>
+</div>
+
+<header>
+  <div class="brand">
+    <h1 class="title">🎮 SchwarmShell <span class="pill" id="phasePill">Phase: —</span></h1>
+    <div class="pill">Story/UI: Deutsch · Commands: Bash/Englisch</div>
+  </div>
+  <p class="sub" id="headerSub">
+    Du bist Schüler*in der <strong>KGS Wilhelm‑Röpke‑Schule Schwarmstedt</strong> — und irgendwer hat eure Schule in einen Gaming‑Layer geglitcht.
+    Du escapst nur, wenn du Bash drauf hast. No cap. 😌
+    <span class="warnInline" id="printStatus">⚠️ Wegen eines System-Glitches können aktuell keine Zeugnisse gedruckt werden.</span>
+    Tipp: <span class="kbd">help</span> · <span class="kbd">quests</span>
+  </p></header>
+
+<main>
+  <section class="card storyCard" id="storyPanel">
+    <h2>Ort & Story</h2>
+    <div class="content">
+      <div class="locationImage"><img id="locImg" alt="Ort" /></div>
+      <div class="locTitle">
+        <strong id="locName">—</strong>
+        <span class="tag" id="locTag">—</span>
+      </div>
+      <p class="desc" id="locDesc">—</p>
+      <p class="inlineList" id="locNPCs"></p>
+      <p class="small" id="locExtra">—</p>
+      <div class="hr"></div>
+      <p class="small">
+        Quickstart: <span class="kbd">cat readme.txt</span> (Phase 1) · <span class="kbd">cd /arena</span> (Hub) · <span class="kbd">reset</span> (alles neu)
+      </p>
+      <div class="phaseCommands" id="phaseCommands">
+        <div class="phaseCommandsHeader" id="phaseCommandsTitle">Wichtige Befehle (Phase —)</div>
+        <ul class="phaseCommandsList" id="phaseCommandsList"></ul>
+        <p class="small phaseCommandsHint">Mehr Details: <span class="kbd">man &lt;cmd&gt;</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card terminalCard" id="terminalPanel">
+    <h2>Terminal</h2>
+    <div class="content terminalWrap">
+      <div class="terminal" id="term" aria-live="polite"></div>
+      <div class="inputBar">
+        <div class="prompt" id="prompt">player@SchwarmShell:~$</div>
+        <div class="inputControls">
+          <input id="cmd" type="text" autocomplete="off" spellcheck="false" placeholder='z.B. ls   oder   grep -n "wort" datei.txt   oder   find / -name "*.log"' />
+          <button class="btn" id="run">Run</button>
+          <button class="btn" id="reset">Reset</button>
+          <button class="btn" id="savegame">Savegame</button>
+        </div>
+      </div>
+      <div class="footerTips">
+        Shortcuts: <span class="kbd">Enter</span> ausführen · <span class="kbd">↑</span>/<span class="kbd">↓</span> Verlauf · <span class="kbd">Tab</span> Autocomplete (mini) ·
+        <span class="kbd">clear</span> Terminal leeren
+      </div>
+    </div>
+  </section>
+
+  <section class="card sidequestCard" id="sidequestCard" hidden>
+    <h2>Winkelmann Sidequest</h2>
+    <div class="content">
+      <div class="rewards" id="sidequestPanel"></div>
+    </div>
+  </section>
+
+  <section class="card mapCard" id="mapPanel">
+    <h2>Ordnerkarte</h2>
+    <div class="content" aria-label="Ordnerkarte">
+      <pre class="mapTree" id="mapTree">Lade Karte…</pre>
+    </div>
+  </section>
+
+  <section class="card rewardsCard" id="rewardsPanel">
+    <h2>Belohnungen</h2>
+    <div class="content">
+      <div class="rewards" id="rewards"></div>
+      <p class="small" style="margin-top:10px;">
+        Autosave ist an. Wenn’s weird wird: <span class="kbd">reset</span> (hard reboot).
+      </p>
+    </div>
+  </section>
+
+  <section class="card objectivesCard" id="objectivesPanel">
+    <h2>Ziele (aktueller Run)</h2>
+    <div class="content objectives" id="objectives"></div>
+  </section>
+</main>
+
+
+<script src="js/data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/state.js"></script>
+<script src="js/fs.js"></script>
+<script src="js/commands.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

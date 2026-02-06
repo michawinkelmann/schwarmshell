@@ -703,7 +703,15 @@ diff /school/biologie/pflanzen_lore.txt /school/chemie/reaktionen.txt
 Du steuerst alles mit Bash-Befehlen (Englisch).
 Phase 1 (Tutorial):
 - Orientierung, Terminal, erste Befehle
-- Lies Dateien, schau dich um
+- Bewegen mit cd: 
+  cd ordnername geht in einen Unterordner,
+  cd .. geht eine Ebene zurück,
+  cd / springt zum Startverzeichnis.
+- Umschauen mit ls: zeigt dir, was im aktuellen Ordner liegt.
+- Lesen mit cat datei.txt: zeigt den Inhalt einer Datei.
+- Unterschied im Spiel:
+  Ordner enthalten weitere Orte/Objekte (du kannst mit cd hinein),
+  Dateien enthalten Infos, Hinweise oder Questtexte (du liest sie mit cat).
 
 Phase 2 (Schule & Quests):
 - Klassen, Lehrer, Hinweise

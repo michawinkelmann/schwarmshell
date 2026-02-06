@@ -51,23 +51,19 @@
       badge:false
     },
     jobArc: { active:false, stage:0, quests:{ snackmaster:false, ars:false, ohlendorf:false, berndt:false, cms:false }, startedAt:null },
-    superpc: { active:false, returnCwd:"" }
+    superpc: { active:false, returnCwd:"" },
+    mapVisited: ["/home/player"]
   };
 
-  function loadState(){
+  function normalizeState(candidate){
     try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return structuredClone(INITIAL_STATE);
-      const s = JSON.parse(raw);
-      if(typeof s !== "object") return structuredClone(INITIAL_STATE);
+      const s = JSON.parse(JSON.stringify(candidate));
+      if(!s || typeof s !== "object") return structuredClone(INITIAL_STATE);
 
-      // Migration: v4 -> v5
       if(s.v === 4){
         const merged = structuredClone(INITIAL_STATE);
-        // shallow merge known top-level fields
         for(const k of Object.keys(s)) merged[k] = s[k];
         merged.v = 5;
-        // deep-merge flags/mentor/sidequest
         merged.flags = Object.assign({}, INITIAL_STATE.flags, (s.flags||{}));
         merged.mentor = Object.assign({}, INITIAL_STATE.mentor, (s.mentor||{}));
         merged.sidequest = Object.assign({}, INITIAL_STATE.sidequest, (s.sidequest||{}));
@@ -76,9 +72,26 @@
       }
 
       if(s.v !== 5) return structuredClone(INITIAL_STATE);
+      s.flags = Object.assign({}, INITIAL_STATE.flags, (s.flags||{}));
+      s.mentor = Object.assign({}, INITIAL_STATE.mentor, (s.mentor||{}));
+      s.sidequest = Object.assign({}, INITIAL_STATE.sidequest, (s.sidequest||{}));
       s.jobArc = Object.assign({}, INITIAL_STATE.jobArc, (s.jobArc||{}));
       s.jobArc.quests = Object.assign({}, INITIAL_STATE.jobArc.quests, (s.jobArc.quests||{}));
+      if(!Array.isArray(s.mapVisited)) s.mapVisited = ["/home/player"];
       return s;
+    }catch(e){
+      return structuredClone(INITIAL_STATE);
+    }
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return structuredClone(INITIAL_STATE);
+      const s = JSON.parse(raw);
+      if(typeof s !== "object") return structuredClone(INITIAL_STATE);
+
+      return normalizeState(s);
     }catch(e){
       return structuredClone(INITIAL_STATE);
     }
@@ -100,6 +113,42 @@
         }
       }
     } catch(e){}
+  }
+
+  function hasAutosave(){
+    return !!localStorage.getItem(STORAGE_KEY);
+  }
+
+  function toBase64Url(str){
+    return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function fromBase64Url(str){
+    const normalized = String(str||"").replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    return decodeURIComponent(escape(atob(padded)));
+  }
+
+  function createSavePassphrase(){
+    const payload = { t:"schwarmshell-save", v:1, state };
+    return `SS1.${toBase64Url(JSON.stringify(payload))}`;
+  }
+
+  function loadStateFromPassphrase(passphrase){
+    const raw = String(passphrase||"").trim();
+    if(!raw.startsWith("SS1.")) return { ok:false, error:"Ungültiges Format." };
+    try{
+      const decoded = fromBase64Url(raw.slice(4));
+      const payload = JSON.parse(decoded);
+      if(!payload || payload.t !== "schwarmshell-save" || payload.v !== 1 || !payload.state){
+        return { ok:false, error:"Passphrase konnte nicht gelesen werden." };
+      }
+      state = normalizeState(payload.state);
+      saveState();
+      return { ok:true };
+    }catch(e){
+      return { ok:false, error:"Passphrase ist beschädigt oder unvollständig." };
+    }
   }
   let state = loadState();
 

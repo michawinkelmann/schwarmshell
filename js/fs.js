@@ -608,9 +608,16 @@
     }
   }
 
+  function getNextOpenObjective(){
+    const phase = Number(state.phase) || 1;
+    const list = OBJECTIVES.filter((o)=>o.phase===phase);
+    return list.find((o)=>!o.done(state)) || null;
+  }
+
   function renderPhaseCommands(){
     const list = el("phaseCommandsList");
     const title = el("phaseCommandsTitle");
+    const nextQuestHint = el("nextQuestHint");
     if(!list || !title) return;
 
     const phase = Number(state.phase) || 1;
@@ -622,6 +629,27 @@
       const li = document.createElement("li");
       li.innerHTML = `<span class="kbd">${escapeHtml(item.cmd)}</span>${escapeHtml(item.desc)}`;
       list.appendChild(li);
+    }
+
+    if(nextQuestHint){
+      const nextObjective = getNextOpenObjective();
+      if(nextObjective){
+        const key = escapeHtml(nextObjective.key || "quest");
+        const titleText = escapeHtml(nextObjective.title || "Nächstes Ziel");
+        const shortDescription = escapeHtml(nextObjective.hint || "Kurzbeschreibung folgt im Ziele-Bereich.");
+        nextQuestHint.innerHTML = `
+          <strong>Nächstes Quest-Ziel:</strong>
+          <a href="#objectivesPanel">[${key}] ${titleText}</a><br>
+          <span>${shortDescription}</span><br>
+          <span>Mehr Hilfe: <span class="kbd">help - ${key}</span></span><br>
+          <span>Weitere Quests findest du weiter unten im Bereich <strong>Ziele</strong>.</span>
+        `;
+      }else{
+        nextQuestHint.innerHTML = `
+          <strong>Alle Quests dieser Phase erledigt.</strong><br>
+          <span>Weitere Quests findest du weiter unten im Bereich <strong>Ziele</strong>.</span>
+        `;
+      }
     }
   }
 

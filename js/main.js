@@ -317,12 +317,26 @@ function placeBubbleAt(targetEl, opts={}){
   bubble.style.left = `${left}px`;
 }
 
+function escapeHtml(value){
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatTutorialText(text){
+  const escaped = escapeHtml(text);
+  return escaped.replace(/&quot;([^&]+?)&quot;/g, '<span class="tutorialCommand">$1</span>');
+}
+
 function showTutorialBubble(text, buttonText, onClick, opts={}){
   const overlay = el("tutorialOverlay");
   const bubble = el("tutorialBubble");
   overlay.hidden = false;
   bubble.hidden = false;
-  el("tutorialText").textContent = text;
+  el("tutorialText").innerHTML = formatTutorialText(text);
   const btn = el("tutorialBtn");
   const showButton = Boolean(opts.showButton !== false);
   btn.hidden = !showButton;

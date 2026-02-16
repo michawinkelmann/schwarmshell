@@ -634,7 +634,7 @@
     if(nextQuestHint){
       const nextObjective = getNextOpenObjective();
       if(nextObjective){
-        const key = escapeHtml(nextObjective.key || "quest");
+        const key = escapeHtml(nextObjective.key || objectiveKeyFromTitle(nextObjective.title));
         const titleText = escapeHtml(nextObjective.title || "Nächstes Ziel");
         const shortDescription = escapeHtml(nextObjective.hint || "Kurzbeschreibung folgt im Ziele-Bereich.");
         nextQuestHint.innerHTML = `

@@ -1549,12 +1549,18 @@ talk harries  /  talk pietsch`;
             "Wenn du dich vertippst: alias neu setzen oder reset (falls angeboten)."
           ],
           "mentor_clear": [
-            "Mentor-Run abschließen – generelle Logik",
-            "Wenn mehrere NPCs Aufgaben haben: erst alle helfen, dann Abschluss-Command nutzen.",
-            "Prüfen kannst du oft mit:",
-            "  talk <name>",
-            "  quests",
-            "Und dann den Abschlussbefehl ausführen, wenn alles erfüllt ist."
+            "Mentor-Run abschließen – komplette Lösung",
+            "1) Noah-Quest erledigen (Lag-Prozess stoppen), danach direkt nochmal reden:",
+            "  talk noah",
+            "2) Emma-Quest erledigen (history prüfen), danach direkt nochmal reden:",
+            "  talk emma",
+            "3) Leo-Quest erledigen (alias setzen), danach direkt nochmal reden:",
+            "  talk leo",
+            "4) Jetzt Abschluss triggern: Prozessliste anzeigen und den Quest-Prozess beenden:",
+            "  ps",
+            "  kill <PID von quest_aktiv>",
+            "  (oder direkt: kill 67, falls quest_aktiv mit PID 67 angezeigt wird)",
+            "Wichtig: Gesucht ist der Prozessname 'quest_aktiv'. Erst nach dem Kill ist mentor_clear wirklich abgeschlossen."
           ],
           "report": [
             "Abschluss/Report – allgemeiner Hinweis",

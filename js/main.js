@@ -36,6 +36,13 @@ const TUTORIAL_TASKS = [
   { id:"final", kind:"input", text:'Sehr gut! Viel Erfolg im Spiel 🎉 Lies jetzt mit "cat readme.txt" weiter und leg los. Wenn du später bei einer Mainquest festhängst, nutze oben im Terminal (mittig links) den 📎 Clippy Helfer für eine Schritt-für-Schritt-Musterlösung.' }
 ];
 
+const CINEMATIC_INTRO_LINES = [
+  "IServ-Mirror meldet unautorisierte Schreibzugriffe auf die Schul-Instanz.",
+  "Der Gaming-Layer synchronisiert sich mit dem KGS-Netz — Realität und Simulation kollidieren.",
+  "Nur ein sauberer Terminal-Lauf kann den Patchlord stoppen."
+];
+
+
 let gameStarted = false;
 let guidedTutorial = {
   active:false,
@@ -43,6 +50,8 @@ let guidedTutorial = {
   taskStep:0
 };
 let bootLoadSource = "Autosave";
+let cinematicIntroStep = 0;
+
 
 
 const CLIPPY_SOLUTIONS = {
@@ -270,6 +279,60 @@ function syncClippyTooltip(){
     return;
   }
   positionClippyTooltip();
+}
+
+function openCinematicIntro(){
+  const overlay = el("cinematicIntroOverlay");
+  const text = el("cinematicIntroText");
+  const continueBtn = el("cinematicIntroContinue");
+  const skipBtn = el("cinematicIntroSkip");
+  if(!overlay || !text || !continueBtn || !skipBtn){
+    startNewGuidedGame();
+    return;
+  }
+
+  cinematicIntroStep = 0;
+  text.textContent = CINEMATIC_INTRO_LINES[cinematicIntroStep] || "";
+  continueBtn.textContent = "Weiter";
+  overlay.hidden = false;
+
+  continueBtn.onclick = ()=>{
+    cinematicIntroStep += 1;
+    const nextLine = CINEMATIC_INTRO_LINES[cinematicIntroStep];
+    if(nextLine){
+      text.textContent = nextLine;
+      if(cinematicIntroStep >= CINEMATIC_INTRO_LINES.length - 1){
+        continueBtn.textContent = "Spiel starten";
+      }
+      return;
+    }
+    closeCinematicIntro();
+    startNewGuidedGame();
+  };
+
+  skipBtn.onclick = ()=>{
+    closeCinematicIntro();
+    startNewGuidedGame();
+  };
+
+  continueBtn.focus();
+}
+
+function closeCinematicIntro(){
+  const overlay = el("cinematicIntroOverlay");
+  const text = el("cinematicIntroText");
+  const continueBtn = el("cinematicIntroContinue");
+  const skipBtn = el("cinematicIntroSkip");
+  if(continueBtn) continueBtn.onclick = null;
+  if(skipBtn) skipBtn.onclick = null;
+  if(text) text.textContent = "—";
+  if(overlay) overlay.hidden = true;
+  cinematicIntroStep = 0;
+}
+
+function beginNewGameFlow(){
+  closeStartModal();
+  openCinematicIntro();
 }
 
 function startNewGuidedGame(){
@@ -685,10 +748,7 @@ function requestResetWithSafety(){
   row("↩️ Undo verfügbar: 10 Sekunden über den Reset-Button.", "p");
 }
 
-el("startNew").addEventListener("click", ()=>{
-  closeStartModal();
-  startNewGuidedGame();
-});
+el("startNew").addEventListener("click", beginNewGameFlow);
 
 el("startAutosave").addEventListener("click", ()=>{
   closeStartModal();

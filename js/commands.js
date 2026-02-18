@@ -1304,9 +1304,18 @@ talk harries  /  talk pietsch`;
     if(!trimmed) return { ok:true, out:"" };
 
     const firstToken = trimmed.split(/\s+/, 1)[0];
-    if(state.npcDialog && state.npcDialog.active && firstToken !== "choose"){
-      resetNpcDialog();
-      saveState();
+    if(firstToken !== "choose"){
+      let changedDialogState = false;
+      if(state.npcDialog && state.npcDialog.active){
+        resetNpcDialog();
+        changedDialogState = true;
+      }
+      if(state.sidequest && state.sidequest.dialog === "winkelmann"){
+        state.sidequest.dialog = null;
+        state.sidequest.winkMenu = "main";
+        changedDialogState = true;
+      }
+      if(changedDialogState) saveState();
     }
 
     if(state.phase >= 3 && trimmed.startsWith("./")){
@@ -3937,11 +3946,7 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
           if(!src || !dst) return { ok:false, out:"Usage: scp <remote_file> <local_path>" };
           if(!dst.startsWith("~/")) return { ok:false, out:"scp: Ziel muss unter ~/ liegen (z.B. ~/workbench/blueprint.dat)" };
 
-          // Wenn Ziel ein Ordner ist (endet auf /), automatisch Dateinamen anhängen
-          if(dst.endsWith("/")){
-            const base = src.split("/").filter(Boolean).pop() || "file.dat";
-            dst = dst + base;
-          }
+          const srcBase = src.split("/").filter(Boolean).pop() || "file.dat";
 
           const host = state.netSession.host;
 
@@ -3954,10 +3959,24 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
           if(!rf || rf.type!=="file") return { ok:false, out:`scp: remote file not found (${src})` };
 
           // Local Zielpfad (nur unter /home/player)
-          const dstAbs = dst.replace(/^~\//, "/home/player/");
+          let dstAbs = dst.replace(/^~\//, "/home/player/");
+
+          // Wie bei cp: Wenn das Ziel ein existierender Ordner ist, Datei darin ablegen.
+          // Dadurch wird z.B. "scp blueprint.dat ~/workbench" robust behandelt.
+          const dstNode = FS[dstAbs];
+          if((dstNode && dstNode.type==="dir") || dst.endsWith("/")){
+            const clean = dstAbs.replace(/\/$/, "");
+            dstAbs = `${clean}/${srcBase}`;
+            dst = dst.endsWith("/") ? dst + srcBase : `${dst}/${srcBase}`;
+          }
+
           const parent = dstAbs.split("/").slice(0,-1).join("/") || "/";
           const parentEntry = FS[parent];
           if(!parentEntry || parentEntry.type!=="dir") return { ok:false, out:`scp: local parent dir missing (${parent})` };
+
+          if(FS[dstAbs] && FS[dstAbs].type === "dir"){
+            return { ok:false, out:`scp: cannot overwrite directory (${dst})` };
+          }
 
           FS[dstAbs] = { type:"file", content: rf.content };
           const leaf = dstAbs.split("/").pop();

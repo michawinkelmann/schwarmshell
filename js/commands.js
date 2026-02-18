@@ -1140,14 +1140,23 @@ Eingabe: choose <nummer>`;
       return { ok:false, out:"Permission denied: Script ist nicht executable. (chmod +x ...)" };
     }
 
-    const content = node.content || "";
+    const content = String(node.content || "");
     // Hotfix: akzeptiere sowohl eine rohe Marker-Zeile als auch eine echo-Zeile.
-    // - PATCH_APPLIED
-    // - echo "PATCH_APPLIED"
-    const hasPatchLine = /(^|\n)\s*(PATCH_APPLIED|echo\s+(["'])?PATCH_APPLIED\3)\s*(\n|$)/.test(content);
-    if(!hasPatchLine){
+    // Wichtig: Sobald der Hotfix einmal erkannt wurde, soll chmod/Permissions
+    // den Quest-Fortschritt niemals wieder "verlieren".
+    const hasPatchLine = content
+      .split(/\r?\n/)
+      .some((line)=>/^(?!\s*#)\s*(PATCH_APPLIED|echo\s+(["'])?PATCH_APPLIED\2)\s*$/.test(line));
+    const patchReady = hasPatchLine || !!state.flags.fixed_script;
+    if(!patchReady){
       return { ok:true, out:`Patchlord lacht: "Bro, wo ist PATCH_APPLIED ?"
 (du musst PATCH_APPLIED oder echo "PATCH_APPLIED" ins Script hängen)` };
+    }
+
+    if(hasPatchLine && !state.flags.fixed_script){
+      state.flags.fixed_script = true;
+      saveState();
+      renderObjectives();
     }
 
     const [a,b,c] = argv;

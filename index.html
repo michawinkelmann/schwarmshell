@@ -58,7 +58,86 @@
 <div class="tutorialOverlay" id="tutorialOverlay" hidden></div>
 <div class="tutorialBubble" id="tutorialBubble" hidden>
   <p id="tutorialText">—</p>
-  <button class="btn" id="tutorialBtn">Weiter</button>
+  <div class="startActions" style="margin-top:6px;">
+    <button class="btn" id="tutorialBtn">Weiter</button>
+    <button class="btn" id="tutorialSkipBtn" type="button" aria-label="Tutorial überspringen">Tutorial überspringen</button>
+  </div>
+</div>
+
+<div class="toastContainer" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+<div class="conceptOverlay" id="conceptOverlay" role="dialog" aria-modal="true" aria-labelledby="conceptTitle" hidden>
+  <div class="conceptPanel" id="conceptPanel">
+    <p class="conceptKicker" id="conceptKicker">Konzept-Karte</p>
+    <h2 id="conceptTitle">—</h2>
+    <p id="conceptBody">—</p>
+    <code class="conceptExample" id="conceptExample">—</code>
+    <p class="conceptHint" id="conceptHint">—</p>
+    <div class="startActions">
+      <button class="btn" id="conceptDontShowAgain" type="button">Nicht mehr zeigen</button>
+      <button class="btn" id="conceptContinue" type="button">Verstanden, weiter</button>
+    </div>
+  </div>
+</div>
+
+<button class="settingsBtn" id="settingsBtn" type="button" aria-label="Einstellungen" title="Einstellungen">⚙</button>
+<div class="settingsOverlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+  <div class="settingsPanel">
+    <h2 id="settingsTitle">Einstellungen</h2>
+    <div class="settingsGroup">
+      <h3>Schwierigkeit</h3>
+      <p>Bestimmt, wie viel Hilfe das Spiel automatisch anbietet.</p>
+      <div class="settingsRow" role="radiogroup" aria-label="Schwierigkeit">
+        <button class="btn" data-difficulty="story" type="button" aria-pressed="false">Story (viel Hilfe)</button>
+        <button class="btn" data-difficulty="classic" type="button" aria-pressed="true">Klassisch</button>
+        <button class="btn" data-difficulty="hardcore" type="button" aria-pressed="false">Hardcore (keine Hilfen)</button>
+      </div>
+    </div>
+    <div class="settingsGroup">
+      <h3>Sound</h3>
+      <p>Kurze Töne bei Erfolg / Badge / Fehler (Web Audio, kein Download).</p>
+      <div class="settingsRow">
+        <button class="btn" id="settingsAudioToggle" type="button" aria-pressed="true">Sound: an</button>
+      </div>
+    </div>
+    <div class="settingsGroup">
+      <h3>Bewegung</h3>
+      <p>Reduziert Animationen (z.B. wenn dir Bewegungen zu viel sind).</p>
+      <div class="settingsRow">
+        <button class="btn" id="settingsReducedMotion" type="button" aria-pressed="false">Reduzierte Bewegung: aus</button>
+      </div>
+    </div>
+    <div class="settingsGroup">
+      <h3>Konzept-Karten</h3>
+      <p>Beim ersten Auftreten erscheinen kurze Erklärungen zu Pipes, Permissions und Prozessen.</p>
+      <div class="settingsRow">
+        <button class="btn" id="settingsResetConcepts" type="button">Konzept-Karten wieder zeigen</button>
+      </div>
+    </div>
+    <div class="settingsGroup">
+      <h3>Replay</h3>
+      <p>Zeigt deine letzten Befehle und Ausgaben als kompakten Spielmitschnitt.</p>
+      <div class="settingsRow">
+        <button class="btn" id="settingsReplay" type="button">Replay anzeigen</button>
+        <button class="btn" id="settingsReplayClear" type="button">Mitschnitt löschen</button>
+      </div>
+    </div>
+    <div class="startActions">
+      <button class="btn" id="settingsClose" type="button">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<div class="replayOverlay" id="replayOverlay" role="dialog" aria-modal="true" aria-labelledby="replayTitle" hidden>
+  <div class="replayPanel">
+    <h2 id="replayTitle">Replay deines Runs</h2>
+    <p class="small" id="replayMeta">—</p>
+    <div class="replayBody" id="replayBody" aria-live="off">—</div>
+    <div class="startActions">
+      <button class="btn" id="replayCopy" type="button">In Zwischenablage</button>
+      <button class="btn" id="replayClose" type="button">Schließen</button>
+    </div>
+  </div>
 </div>
 
 <header>

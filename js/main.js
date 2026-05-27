@@ -259,13 +259,22 @@ function showClippyTooltip(){
     return;
   }
   const { key, objective, template } = payload;
+
+  // Difficulty entscheidet, ob die Schritt-Lösung direkt sichtbar ist (Story-Modus)
+  // oder erst auf Knopfdruck (Classic). Hardcore blendet Clippy schon im Header aus.
+  const difficulty = (state.settings && state.settings.difficulty) || "classic";
+  const showStepsImmediately = difficulty === "story";
+
   const stepsHtml = template.steps.map((step)=>`<li>${step}</li>`).join("");
   tooltip.innerHTML = `
-    <h3 class="clippyTitle">📎 Clippy Helfer: Musterlösung für [${escapeHtml(key)}]</h3>
+    <h3 class="clippyTitle">📎 Clippy Helfer für [${escapeHtml(key)}]</h3>
     <p class="clippySub"><strong>${escapeHtml(objective.title)}</strong><br>${escapeHtml(template.subtitle)}</p>
-    <ol class="clippySteps">${stepsHtml}</ol>
-    <p class="clippyHint">${escapeHtml(template.hint)}</p>
-    <div class="clippyActions"><button class="btn" id="clippyCloseBtn" type="button">Okay</button></div>
+    <div class="clippyHintBlock"><strong>Tipp ohne Spoiler:</strong> ${escapeHtml(template.hint)}</div>
+    <ol class="clippySteps" id="clippyStepsList" ${showStepsImmediately ? "" : "hidden"}>${stepsHtml}</ol>
+    <div class="clippyActions">
+      <button class="btn" id="clippyRevealBtn" type="button" ${showStepsImmediately ? 'hidden' : ''}>Lösung anzeigen</button>
+      <button class="btn" id="clippyCloseBtn" type="button">Okay</button>
+    </div>
   `;
   tooltip.hidden = false;
   tooltip.dataset.objectiveKey = key;
@@ -280,6 +289,15 @@ function showClippyTooltip(){
 
   const closeBtn = el("clippyCloseBtn");
   if(closeBtn) closeBtn.addEventListener("click", closeClippyTooltip);
+  const revealBtn = el("clippyRevealBtn");
+  if(revealBtn){
+    revealBtn.addEventListener("click", ()=>{
+      const list = el("clippyStepsList");
+      if(list) list.hidden = false;
+      revealBtn.hidden = true;
+      requestAnimationFrame(positionClippyTooltip);
+    });
+  }
   requestAnimationFrame(positionClippyTooltip);
 }
 
@@ -895,7 +913,7 @@ cmdInput.addEventListener("keydown", (e)=>{
     }
 
     if(candidates.length > 1){
-      if(tabState.source === cmdInput.value && tabState.candidates.join("\u0000") === candidates.join("\u0000")){
+      if(tabState.source === cmdInput.value && tabState.candidates.join(" ") === candidates.join(" ")){
         tabState.index = (tabState.index + 1) % candidates.length;
       }else{
         tabState.source = cmdInput.value;
@@ -947,6 +965,342 @@ setInterval(()=>{
   renderClippyAvailability();
 }, 1000);
 renderClippyAvailability();
+
+// ============================================================================
+//  Audio-Feedback (Web Audio API, kein Asset-Download)
+// ============================================================================
+let _audioCtx = null;
+function getAudioCtx(){
+  if(_audioCtx) return _audioCtx;
+  try{
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(!Ctx) return null;
+    _audioCtx = new Ctx();
+    return _audioCtx;
+  }catch(_e){ return null; }
+}
+function playBeep(kind){
+  try{
+    if(!state || !state.settings || state.settings.audio !== true) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === "suspended"){ try{ ctx.resume(); }catch(_e){} }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    let freq = 660, dur = 0.12;
+    if(kind === "success"){ freq = 880; dur = 0.16; }
+    else if(kind === "warn"){ freq = 300; dur = 0.18; }
+    else if(kind === "info"){ freq = 520; dur = 0.10; }
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    gain.gain.value = 0.0001;
+    const t0 = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+    if(kind === "success"){
+      // kleiner Aufstieg: 2. Ton
+      setTimeout(()=>{
+        try{
+          const osc2 = ctx.createOscillator();
+          const g2 = ctx.createGain();
+          osc2.connect(g2); g2.connect(ctx.destination);
+          osc2.type = "triangle";
+          osc2.frequency.value = 1175;
+          const tt = ctx.currentTime;
+          g2.gain.value = 0.0001;
+          g2.gain.exponentialRampToValueAtTime(0.10, tt + 0.01);
+          g2.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16);
+          osc2.start(tt);
+          osc2.stop(tt + 0.18);
+        }catch(_e){}
+      }, 130);
+    }
+  }catch(_e){}
+}
+window.playBeep = playBeep;
+
+// ============================================================================
+//  Settings-Anwendung (Difficulty / Reduced Motion / Audio)
+// ============================================================================
+function applySettings(){
+  try{
+    if(!state.settings) return;
+    document.body.classList.toggle("reducedMotion", !!state.settings.reducedMotion);
+    // Difficulty wirkt auf Clippy-Sichtbarkeit. In Hardcore: Clippy-Button blenden wir aus
+    // (Spieler bekommt nur die fest eingebaute `hint`-Funktion ohne Schritt-Lösung).
+    const clippyBtn = el("clippyHelperBtn");
+    const clippyUsage = el("clippyUsage");
+    const clippyStatus = el("clippyStatus");
+    if(clippyBtn){
+      const hide = state.settings.difficulty === "hardcore";
+      clippyBtn.hidden = hide;
+      if(clippyUsage) clippyUsage.hidden = hide;
+      if(clippyStatus) clippyStatus.hidden = hide;
+      if(hide){
+        const tt = el("clippyTooltip");
+        if(tt) tt.hidden = true;
+      }
+    }
+  }catch(_e){}
+}
+
+// ============================================================================
+//  Settings-Modal
+// ============================================================================
+function openSettingsModal(){
+  const ov = el("settingsOverlay");
+  if(!ov) return;
+  // Buttons synchronisieren mit aktuellem State
+  const diff = (state.settings && state.settings.difficulty) || "classic";
+  document.querySelectorAll('[data-difficulty]').forEach((btn)=>{
+    btn.setAttribute("aria-pressed", btn.dataset.difficulty === diff ? "true" : "false");
+  });
+  const audioBtn = el("settingsAudioToggle");
+  if(audioBtn){
+    const on = !!(state.settings && state.settings.audio);
+    audioBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    audioBtn.textContent = `Sound: ${on ? "an" : "aus"}`;
+  }
+  const rmBtn = el("settingsReducedMotion");
+  if(rmBtn){
+    const on = !!(state.settings && state.settings.reducedMotion);
+    rmBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    rmBtn.textContent = `Reduzierte Bewegung: ${on ? "an" : "aus"}`;
+  }
+  ov.hidden = false;
+}
+function closeSettingsModal(){
+  const ov = el("settingsOverlay");
+  if(ov) ov.hidden = true;
+}
+
+// ============================================================================
+//  Konzept-Karten (kurze Inline-Tutorials zu Permissions, Prozessen, Pipes)
+//  Werden beim allerersten Auftreten gezeigt — Settings → "wieder zeigen" resettet.
+// ============================================================================
+const CONCEPT_CARDS = {
+  permissions: {
+    kicker: "Was sind Permissions?",
+    title: "Datei-Rechte: rwx, Owner / Group / Others",
+    body: "Jede Datei hat drei Rechte-Blöcke: für dich (Owner), deine Gruppe und alle anderen. Jeder Block hat drei Bits: r (lesen), w (schreiben), x (ausführen). Die Zahl 644 bedeutet z.B. rw-r--r-- — du darfst lesen und schreiben, der Rest nur lesen. 755 = rwxr-xr-x (du darfst zusätzlich ausführen). chmod ändert genau diese Bits.",
+    example: "chmod +x script.sh      # exec-Bit setzen\nchmod 644 notiz.txt    # rw-r--r--\nchmod 755 hack.sh      # rwxr-xr-x",
+    hint: "Im echten Linux gibt's noch chown/chgrp und Sonder-Bits wie setuid — die brauchst du jetzt aber nicht."
+  },
+  processes: {
+    kicker: "Was ist ein Prozess?",
+    title: "Prozesse: Programme, die gerade laufen",
+    body: "Wenn du ein Programm startest, läuft es als 'Prozess' im RAM mit einer eindeutigen PID (Process ID). ps listet diese Prozesse auf, top sortiert nach CPU-Last. kill schickt einem Prozess ein Signal — Standard ist SIGTERM (sanft beenden), -9 ist SIGKILL (sofort, hart).",
+    example: "ps                  # alle Prozesse\ntop                 # nach CPU sortiert\nkill 1337           # PID 1337 sanft beenden\nkill -9 1337        # PID 1337 hart killen",
+    hint: "Im Spiel sind die Prozesse simuliert — auf echtem Linux siehst du Hunderte. Hilfreich bei Lags oder hängenden Programmen."
+  },
+  pipes: {
+    kicker: "Was ist eine Pipe?",
+    title: "Pipes (|): Output → Input verketten",
+    body: "Mit | leitest du die Ausgabe eines Befehls direkt als Eingabe in den nächsten. Das ist der Kern der Unix-Philosophie: kleine Tools kombinieren statt einen Riesen-Befehl. cat datei.txt | grep error filtert nur die Zeilen mit 'error'. Im Spiel sind max. 2 Pipes erlaubt.",
+    example: 'cat readme.txt | grep "FRAG"\nls | grep .log\necho "hi" | grep h',
+    hint: "Verwandt: > schreibt Output in eine Datei, >> hängt an. Beispiel: ls > liste.txt"
+  },
+  redirects: {
+    kicker: "Was sind Redirects?",
+    title: "Output umleiten: > und >>",
+    body: "Statt im Terminal zu landen, kann die Ausgabe eines Befehls in eine Datei umgeleitet werden. > überschreibt die Datei, >> hängt ans Ende an. So baust du Logs oder Patch-Dateien.",
+    example: 'echo "hi" > greeting.txt    # Datei wird neu geschrieben\necho "noch eine zeile" >> greeting.txt    # angehängt',
+    hint: "Aufpassen: > überschreibt ohne Rückfrage. Lieber zweimal lesen, bevor du das auf wichtige Dateien anwendest."
+  }
+};
+
+function showConceptCard(key){
+  try{
+    if(!CONCEPT_CARDS[key]) return;
+    if(!state.settings) state.settings = { conceptsSeen:{}, conceptsDisabled:false };
+    if(state.settings.conceptsDisabled) return;
+    if(state.settings.conceptsSeen && state.settings.conceptsSeen[key]) return;
+    const card = CONCEPT_CARDS[key];
+    const overlay = el("conceptOverlay");
+    if(!overlay) return;
+    el("conceptKicker").textContent = card.kicker;
+    el("conceptTitle").textContent = card.title;
+    el("conceptBody").textContent = card.body;
+    el("conceptExample").textContent = card.example;
+    el("conceptHint").textContent = card.hint;
+    overlay.dataset.conceptKey = key;
+    overlay.hidden = false;
+    const contBtn = el("conceptContinue");
+    if(contBtn) contBtn.focus();
+  }catch(_e){}
+}
+function closeConceptCard(){
+  const overlay = el("conceptOverlay");
+  if(!overlay) return;
+  const key = overlay.dataset.conceptKey;
+  if(key){
+    if(!state.settings) state.settings = { conceptsSeen:{}, conceptsDisabled:false };
+    if(!state.settings.conceptsSeen) state.settings.conceptsSeen = {};
+    state.settings.conceptsSeen[key] = true;
+    saveState();
+  }
+  overlay.hidden = true;
+  delete overlay.dataset.conceptKey;
+}
+window.showConceptCard = showConceptCard;
+
+// ============================================================================
+//  Replay-Modal — zeigt mitgeschnittene Befehle + Ausgaben
+// ============================================================================
+function openReplayModal(){
+  const ov = el("replayOverlay");
+  if(!ov) return;
+  const body = el("replayBody");
+  const meta = el("replayMeta");
+  const log = Array.isArray(state.replayLog) ? state.replayLog : [];
+  if(!log.length){
+    body.textContent = "(Noch kein Replay vorhanden — spiel ein paar Befehle, dann schau wieder vorbei.)";
+    meta.textContent = "0 Zeilen";
+  }else{
+    const inputs = log.filter(e=>e.kind==="input").length;
+    meta.textContent = `${log.length} Zeilen · ${inputs} Eingaben`;
+    body.innerHTML = log.map((e)=>{
+      const txt = escapeHtml(e.text);
+      if(e.kind === "input"){
+        return `<span class="replayLine input"><span class="replayCaret">›</span>${txt}</span>`;
+      }
+      return `<span class="replayLine output">${txt}</span>`;
+    }).join("\n");
+  }
+  ov.hidden = false;
+}
+function closeReplayModal(){
+  const ov = el("replayOverlay");
+  if(ov) ov.hidden = true;
+}
+async function copyReplayToClipboard(){
+  try{
+    const log = Array.isArray(state.replayLog) ? state.replayLog : [];
+    const text = log.map(e => (e.kind==="input" ? `> ${e.text}` : e.text)).join("\n");
+    if(navigator.clipboard && typeof navigator.clipboard.writeText === "function"){
+      await navigator.clipboard.writeText(text);
+      toast("Replay in die Zwischenablage kopiert.", { type:"success" });
+    }else{
+      toast("Automatisches Kopieren nicht verfügbar.", { type:"warn" });
+    }
+  }catch(_e){
+    toast("Kopieren fehlgeschlagen.", { type:"warn" });
+  }
+}
+
+// ============================================================================
+//  Event-Wiring für all die neuen UI-Elemente
+// ============================================================================
+const _settingsBtn = el("settingsBtn");
+if(_settingsBtn) _settingsBtn.addEventListener("click", openSettingsModal);
+const _settingsClose = el("settingsClose");
+if(_settingsClose) _settingsClose.addEventListener("click", closeSettingsModal);
+const _settingsOverlay = el("settingsOverlay");
+if(_settingsOverlay){
+  _settingsOverlay.addEventListener("click", (e)=>{
+    if(e.target === _settingsOverlay) closeSettingsModal();
+  });
+}
+
+document.querySelectorAll('[data-difficulty]').forEach((btn)=>{
+  btn.addEventListener("click", ()=>{
+    const d = btn.dataset.difficulty;
+    if(!["story","classic","hardcore"].includes(d)) return;
+    state.settings.difficulty = d;
+    saveState();
+    document.querySelectorAll('[data-difficulty]').forEach((b)=>{
+      b.setAttribute("aria-pressed", b.dataset.difficulty === d ? "true" : "false");
+    });
+    applySettings();
+    toast(`Schwierigkeit: ${d === "story" ? "Story" : d === "classic" ? "Klassisch" : "Hardcore"}`, { type:"info" });
+  });
+});
+
+const _audioBtn = el("settingsAudioToggle");
+if(_audioBtn){
+  _audioBtn.addEventListener("click", ()=>{
+    state.settings.audio = !state.settings.audio;
+    saveState();
+    _audioBtn.setAttribute("aria-pressed", state.settings.audio ? "true" : "false");
+    _audioBtn.textContent = `Sound: ${state.settings.audio ? "an" : "aus"}`;
+    if(state.settings.audio) playBeep("info");
+  });
+}
+const _rmBtn = el("settingsReducedMotion");
+if(_rmBtn){
+  _rmBtn.addEventListener("click", ()=>{
+    state.settings.reducedMotion = !state.settings.reducedMotion;
+    saveState();
+    _rmBtn.setAttribute("aria-pressed", state.settings.reducedMotion ? "true" : "false");
+    _rmBtn.textContent = `Reduzierte Bewegung: ${state.settings.reducedMotion ? "an" : "aus"}`;
+    applySettings();
+  });
+}
+const _resetConcepts = el("settingsResetConcepts");
+if(_resetConcepts){
+  _resetConcepts.addEventListener("click", ()=>{
+    state.settings.conceptsSeen = {};
+    state.settings.conceptsDisabled = false;
+    saveState();
+    toast("Konzept-Karten werden beim nächsten Anlass wieder gezeigt.", { type:"info" });
+  });
+}
+const _replayBtn = el("settingsReplay");
+if(_replayBtn) _replayBtn.addEventListener("click", ()=>{ closeSettingsModal(); openReplayModal(); });
+const _replayClear = el("settingsReplayClear");
+if(_replayClear){
+  _replayClear.addEventListener("click", ()=>{
+    state.replayLog = [];
+    saveState();
+    toast("Replay-Mitschnitt gelöscht.", { type:"info" });
+  });
+}
+const _replayClose = el("replayClose");
+if(_replayClose) _replayClose.addEventListener("click", closeReplayModal);
+const _replayCopy = el("replayCopy");
+if(_replayCopy) _replayCopy.addEventListener("click", copyReplayToClipboard);
+
+// Konzept-Karte schließen / dauerhaft deaktivieren
+const _conceptContinue = el("conceptContinue");
+if(_conceptContinue) _conceptContinue.addEventListener("click", closeConceptCard);
+const _conceptDontShow = el("conceptDontShowAgain");
+if(_conceptDontShow){
+  _conceptDontShow.addEventListener("click", ()=>{
+    if(!state.settings) state.settings = { conceptsSeen:{}, conceptsDisabled:false };
+    state.settings.conceptsDisabled = true;
+    saveState();
+    closeConceptCard();
+    toast("Konzept-Karten deaktiviert (kann in den Einstellungen wieder aktiviert werden).", { type:"info" });
+  });
+}
+
+// Tutorial-Skip
+const _tutSkip = el("tutorialSkipBtn");
+if(_tutSkip){
+  _tutSkip.addEventListener("click", ()=>{
+    if(confirm("Tutorial wirklich überspringen? Du kannst die Hinweise später nicht erneut starten.")){
+      endGuidedTutorial();
+      toast("Tutorial übersprungen. help / quests zeigen dir, wo's weitergeht.", { type:"info" });
+    }
+  });
+}
+
+// Settings-Overlay per Esc schließen
+document.addEventListener("keydown", (e)=>{
+  if(e.key !== "Escape") return;
+  const settingsOv = el("settingsOverlay");
+  if(settingsOv && !settingsOv.hidden){ closeSettingsModal(); return; }
+  const replayOv = el("replayOverlay");
+  if(replayOv && !replayOv.hidden){ closeReplayModal(); return; }
+  const conceptOv = el("conceptOverlay");
+  if(conceptOv && !conceptOv.hidden){ closeConceptCard(); return; }
+});
+
+// Initiales Anwenden der Settings (auch nach Reload mit Autosave)
+applySettings();
 
 showStartModal();
 

@@ -55,7 +55,15 @@
     npcDialog: { active:false, npcId:null, nodeId:null },
     mapVisited: ["/home/player"],
     mapFilter: "all",
-    clippy: { lastUsedAt: 0, usageCount: 0 }
+    clippy: { lastUsedAt: 0, usageCount: 0 },
+    settings: {
+      difficulty: "classic",       // "story" | "classic" | "hardcore"
+      audio: true,                  // kurze Web-Audio-Töne bei Erfolg
+      reducedMotion: false,         // zusätzliche Bewegungs-Reduktion (ergänzt prefers-reduced-motion)
+      conceptsSeen: {},             // welche Konzept-Karten der Spieler schon gesehen hat
+      conceptsDisabled: false       // global "nicht mehr zeigen"
+    },
+    replayLog: []                   // [{ kind:"input"|"output", text, t }] — auf ~400 Einträge begrenzt
   };
 
   function normalizeState(candidate){
@@ -72,6 +80,8 @@
         merged.sidequest = Object.assign({}, INITIAL_STATE.sidequest, (s.sidequest||{}));
         merged.jobArc = Object.assign({}, INITIAL_STATE.jobArc, (s.jobArc||{}));
         merged.npcDialog = Object.assign({}, INITIAL_STATE.npcDialog, (s.npcDialog||{}));
+        merged.settings = Object.assign({}, INITIAL_STATE.settings, (s.settings||{}));
+        merged.replayLog = Array.isArray(s.replayLog) ? s.replayLog.slice(-400) : [];
         return merged;
       }
 
@@ -86,6 +96,16 @@
       if(!["active","all","unvisited"].includes(s.mapFilter)) s.mapFilter = "all";
       s.clippy = Object.assign({}, INITIAL_STATE.clippy, (s.clippy||{}));
       if(!Number.isFinite(Number(s.clippy.usageCount))) s.clippy.usageCount = 0;
+      // Settings + Replay-Log: vorwärtskompatibel ergänzen, alte Saves dürfen die Felder nicht haben.
+      s.settings = Object.assign({}, INITIAL_STATE.settings, (s.settings||{}));
+      if(!["story","classic","hardcore"].includes(s.settings.difficulty)) s.settings.difficulty = "classic";
+      if(typeof s.settings.audio !== "boolean") s.settings.audio = true;
+      if(typeof s.settings.reducedMotion !== "boolean") s.settings.reducedMotion = false;
+      if(!s.settings.conceptsSeen || typeof s.settings.conceptsSeen !== "object") s.settings.conceptsSeen = {};
+      if(typeof s.settings.conceptsDisabled !== "boolean") s.settings.conceptsDisabled = false;
+      if(!Array.isArray(s.replayLog)) s.replayLog = [];
+      // Replay-Log hart begrenzen, damit localStorage nicht überläuft (5–10 MB pro Origin).
+      if(s.replayLog.length > 400) s.replayLog = s.replayLog.slice(-400);
       return s;
     }catch(e){
       return structuredClone(INITIAL_STATE);
@@ -193,20 +213,28 @@
     state.rewards.push(id);
     saveState();
     renderRewards();
-    row(`+ Belohnung: ${REWARD_LIBRARY[id]?.name || id}`, "ok");
+    const rewardName = REWARD_LIBRARY[id]?.name || id;
+    row(`+ Belohnung: ${rewardName}`, "ok");
+    // Zusätzliche, gut sichtbare Bestätigung — vorher war der Erfolg leicht zu übersehen.
+    if(typeof window.toast === "function"){
+      window.toast(rewardName, { type:"success", title:"🏅 Badge freigeschaltet" });
+    }
   }
 
   function ensurePerm(path){
     if(!state.perms[path]){
       const isScript = path.endsWith(".sh");
-      state.perms[path] = { mode: isScript ? "644" : "644", exec:false };
+      state.perms[path] = { mode: isScript ? "755" : "644", exec: isScript };
       saveState();
     }
     return state.perms[path];
   }
   (function initPerms(){
+    // Patchlord-Script startet absichtlich ohne Ausführrecht (Phase-3-Quest:
+    // erst nach chmod +x soll bash patchlord.sh / ./patchlord.sh laufen).
     const p = "/boss/patchlord.sh";
     ensurePerm(p);
+    state.perms[p].mode = "644";
     state.perms[p].exec = false;
 
     // Hidden Miniquests: iPad-Sync-File startet ohne Leserechte (chmod-Quest)

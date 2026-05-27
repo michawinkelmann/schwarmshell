@@ -169,10 +169,22 @@
   function grepLines(text, pattern, opts){
     let lines = String(text).split(/\r?\n/);
     const out = [];
-    const needle = opts.i ? pattern.toLowerCase() : pattern;
+    // Echtes grep nutzt Regex (POSIX BRE). Wir benutzen JS-Regex als Annäherung,
+    // damit Anker (^ $), Zeichenklassen ([a-z]) und Quantoren (.* ?) wie in echter
+    // Bash funktionieren. Bei ungültigem Pattern (z.B. einsames "[") fallen wir auf
+    // Substring-Suche zurück, damit Anfänger nicht von einem Crash überrascht werden.
+    let re = null;
+    try{
+      re = new RegExp(pattern, opts.i ? "i" : "");
+    }catch(_err){
+      re = null;
+    }
+    const litNeedle = opts.i ? String(pattern).toLowerCase() : String(pattern);
     for(let i=0;i<lines.length;i++){
-      const hay = opts.i ? lines[i].toLowerCase() : lines[i];
-      if(hay.includes(needle)){
+      const hit = re
+        ? re.test(lines[i])
+        : (opts.i ? lines[i].toLowerCase().includes(litNeedle) : lines[i].includes(pattern));
+      if(hit){
         out.push(opts.n ? `${i+1}:${lines[i]}` : lines[i]);
       }
     }

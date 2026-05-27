@@ -1069,7 +1069,11 @@ Eingabe: choose <nummer>`;
         row("FRAG3 geklärt ✅ (NEON-PIPE-7)", "ok");
       }
     }
-    if(state.phase >= 3 && pattern === "BUG" && outText.match(/^\s*\d+:/m)){
+    // Vorher case-sensitive ("BUG" exakt) — das stand im Widerspruch dazu, dass die
+    // Quest dem Spieler grep -i als legitime Variante beibringt. Jetzt zählt jedes
+    // Pattern, das "bug" enthält (z.B. "BUG", "Bug", "bugfix"), solange Zeilennummern
+    // (grep -n) im Output stehen.
+    if(state.phase >= 3 && /bug/i.test(pattern) && outText.match(/^\s*\d+:/m)){
       state.flags.inspected_boss = true;
     }
 
@@ -1335,7 +1339,11 @@ talk harries  /  talk pietsch`;
       const w = writeFile(target, content, red.op === ">>");
       if(!w.ok) return { ok:false, out:`echo: ${w.err}` };
 
-      if(target === "/home/player/workbench/patchlord.sh" && /^(PATCH_APPLIED|echo\s+(["'])?PATCH_APPLIED\2)$/.test(t.trim())){
+      // Hotfix-Trigger: alles akzeptieren, was den Marker "PATCH_APPLIED" enthält —
+      // egal ob "PATCH_APPLIED", "echo PATCH_APPLIED", "echo 'PATCH_APPLIED'" oder ein
+      // semantisch identischer Kommentar. Vorher war das ein exakt-Match-Regex, der
+      // Spieler frustrierte, die Quotes weggelassen hatten.
+      if(target === "/home/player/workbench/patchlord.sh" && /PATCH_APPLIED/.test(t)){
         state.flags.fixed_script = true;
         saveState();
         renderObjectives();
@@ -2035,6 +2043,15 @@ case "talk":{
         const raw = (args.join(" ")||"").trim();
         if(!raw) return { ok:false, out:"talk: missing npc name (z.B. talk remmers)" };
 
+        // Wenn vorher ein NPC-spezifischer Custom-Branch (z.B. Noah-Lag-Choices) offen war
+        // und der Spieler ohne `choose` einfach zu einem anderen NPC läuft, würde ein
+        // späteres `choose N` sonst noch in den alten Branch gehen. Daher: bei JEDEM neuen
+        // talk den NPC-Dialog-State neutralisieren — die Story-Branches setzen ihn ggf.
+        // gleich wieder neu.
+        if(state.npcDialog && state.npcDialog.nodeId === "lag_choices"){
+          resetNpcDialog();
+        }
+
         const normalizeToken = (s)=>String(s||"")
           .toLowerCase()
           .normalize("NFD")
@@ -2639,11 +2656,21 @@ GG.
           if(state.phase < 4){
             out += `„Bro ich bin noch nicht mal im Mentor-Arc. 🤨“`;
           } else if(!state.mentor.lag_fixed){
+            // Echte Verzweigung statt nur Hint-Wall: Spieler*innen wählen, wie sie das
+            // Problem angehen. Jeder Pfad führt zum Ziel, vermittelt aber unterschiedliche
+            // Konzept-Tiefe — das ist der Proof-of-Concept für "NPC mit Konsequenzen".
+            state.npcDialog = { active:true, npcId:"noah", nodeId:"lag_choices" };
             out += `„Mein Terminal laggt SO HART. Es fühlt sich an wie 3 FPS.
 `
                 + `Kannst du bitte kurz schauen? Ich schwöre, irgendwas frisst CPU…“
-`
-                + `Hint: ps / top und dann kill den Täter.`;
+
+Wie gehst du ran?
+  (1) Einfach killen — was-auch-immer, weg damit.
+  (2) Erst mit top schauen, was die CPU wirklich frisst.
+  (3) Frag erstmal: „was ist überhaupt rgbd?“
+  (0) Lass mich kurz nachdenken.
+
+Tipp: choose 1   ·   choose 2   ·   choose 3`;
           } else {
             out += `„OMG danke! Es ist wieder smooth.
 `
@@ -3466,7 +3493,11 @@ const outText = (extra + open).trim();
           award("badge_chmod");
         } else if(mode.match(/^\d{3}$/)){
           p.mode = mode;
-          p.exec = (mode.endsWith("5") || mode.endsWith("7") || mode.endsWith("1"));
+          // exec-Bit ist im Owner-Oktett (erste Ziffer): 1=x, 3=wx, 5=rx, 7=rwx.
+          // Vorher wurde fälschlich nur die letzte Ziffer (others) geprüft — chmod 700
+          // hätte exec=false gesetzt, obwohl der Owner ausführen darf.
+          const ownerOct = parseInt(mode[0], 10);
+          p.exec = Number.isFinite(ownerOct) ? ((ownerOct & 1) === 1) : false;
         } else {
           return { ok:false, out:"chmod: unsupported mode" };
         }
@@ -3543,8 +3574,15 @@ const outText = (extra + open).trim();
 
       case "kill":{
         if(state.phase < 4) return { ok:false, out:"kill ist ab Phase 4." };
-        const pid = parseInt(args[0],10);
-        if(!pid) return { ok:false, out:"kill: usage: kill <PID>" };
+        if(!args[0]) return { ok:false, out:"kill: usage: kill <PID>" };
+        const raw = String(args[0]).trim();
+        // Akzeptiere optionales Signal-Argument (kill -9 <pid>, kill -15 <pid>) — auch wenn
+        // wir Signale (noch) nicht differenziert behandeln. So lernt der Spieler die echte
+        // Bash-Syntax kennen, ohne abgewiesen zu werden.
+        const pidStr = raw.startsWith("-") ? String(args[1]||"").trim() : raw;
+        if(!/^\d+$/.test(pidStr)) return { ok:false, out:"kill: usage: kill [-9|-15] <PID>" };
+        const pid = parseInt(pidStr, 10);
+        if(!Number.isFinite(pid) || pid <= 0) return { ok:false, out:"kill: usage: kill [-9|-15] <PID>" };
         const idx = (state.processes||[]).findIndex(p=>p.pid===pid);
         if(idx===-1) return { ok:false, out:`kill: (${pid}) - No such process` };
         const proc = state.processes[idx];
@@ -3603,6 +3641,58 @@ case "reset":{
       case "choose":{
         const pick = (args[0]||"").trim();
         if(!pick) return { ok:false, out:"Usage: choose <number> (z.B. choose 3)" };
+
+        // ---- POC: Noah-Lag-Branch (echte Verzweigung mit unterschiedlicher Lerntiefe) ----
+        // Jeder Pfad bringt zum gleichen mechanischen Ziel (kill 202), gibt aber je nach
+        // Wahl mehr oder weniger Konzept-Hintergrund. state.flags.noah_path merkt sich
+        // die Entscheidung — Folge-NPCs können später darauf reagieren.
+        if(state.npcDialog && state.npcDialog.active
+            && state.npcDialog.npcId === "noah"
+            && state.npcDialog.nodeId === "lag_choices"){
+          if(pick === "0"){
+            resetNpcDialog();
+            saveState();
+            return { ok:true, out:"Noah: „Klar, nimm dir Zeit. Ich heul solange.“" };
+          }
+          state.flags = state.flags || {};
+          if(pick === "1"){
+            state.flags.noah_path = "fast";
+            resetNpcDialog();
+            saveState();
+            return { ok:true, out:
+`Du: „Egal — ich kill das Ding.“
+Noah: „Bro Speedrun-Energy. Respect.“
+
+Tipp: ps zeigt PIDs, dann kill <pid>.` };
+          }
+          if(pick === "2"){
+            state.flags.noah_path = "top";
+            resetNpcDialog();
+            saveState();
+            return { ok:true, out:
+`Du: „Ich gucke erst mit top, was wirklich die CPU frisst.“
+Noah: „Nice, methodisch. Lehrer-Mood.“
+
+Konzept-Boost: top sortiert Prozesse nach CPU. Die Spalte CPU% zeigt dir den
+Schuldigen sofort. Danach: kill <pid>. Bei Prozessen die SIGTERM ignorieren
+brauchst du kill -9 <pid> (SIGKILL — hart).` };
+          }
+          if(pick === "3"){
+            state.flags.noah_path = "daemon";
+            resetNpcDialog();
+            saveState();
+            return { ok:true, out:
+`Du: „Was ist eigentlich rgbd?“
+Noah: „Lol gute Frage.“
+
+Konzept-Boost: rgbd ist ein typischer Daemon-Name (das d am Ende = ‚daemon‘, ein
+Hintergrund-Prozess). Klassiker auf Linux: sshd, systemd, cupsd, httpd.
+Manchmal laufen die Amok und fressen CPU. Erkennen mit ps/top, beenden mit kill.` };
+          }
+          return { ok:false, out:"choose: gültig sind 0, 1, 2 oder 3." };
+        }
+        // ---- /Noah-Branch ----
+
         if(state.npcDialog && state.npcDialog.active){
           const npcId = state.npcDialog.npcId;
           const npc = NPCS[npcId];
@@ -4087,6 +4177,32 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
     saveState();
 
     row(`${promptText()} ${trimmed}`, "p", "input");
+    // Replay-Mitschnitt: jede Eingabe wird festgehalten. Hardcore-Schüler können das
+    // später per Settings deaktivieren / leeren.
+    try{ if(window.appendReplay) window.appendReplay("input", trimmed); }catch(_e){}
+
+    // Konzept-Karten-Trigger (einmaliges Mini-Tutorial, nur beim ERSTEN Auftreten und
+    // nur wenn der Befehl in der aktuellen Phase überhaupt freigeschaltet ist —
+    // sonst würden Spieler*innen die Erklärung sehen, bevor sie sie nutzen dürfen).
+    try{
+      if(window.showConceptCard){
+        const firstTok = trimmed.split(/\s+/)[0];
+        const allowed = allowedCommands();
+        if(state.phase >= 2 && /[^|]\|[^|]/.test(trimmed)){
+          window.showConceptCard("pipes");
+        }
+        if(state.phase >= 2 && /^echo\s.+(>>|>)\s*\S/.test(trimmed)){
+          window.showConceptCard("redirects");
+        }
+        if(firstTok === "chmod" && allowed.includes("chmod")){
+          window.showConceptCard("permissions");
+        }
+        if((firstTok === "ps" || firstTok === "top" || firstTok === "kill")
+            && allowed.includes(firstTok)){
+          window.showConceptCard("processes");
+        }
+      }
+    }catch(_e){}
 
     // Support && and || (left-to-right). Each segment may contain pipes.
     const parts = trimmed.split(/(\s&&\s|\s\|\|\s)/);
@@ -4131,12 +4247,16 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
         if(!r.ok){
           row(r.out, "bad");
           row("Tipp: help / quests", "p");
+          try{ if(window.appendReplay) window.appendReplay("output", r.out || ""); }catch(_e){}
           ok = false;
           break;
         }
         stdin = r.out ?? "";
         if(j === segments.length - 1){
-          if(r.out) row(r.out);
+          if(r.out){
+            row(r.out);
+            try{ if(window.appendReplay) window.appendReplay("output", r.out); }catch(_e){}
+          }
         }
         try{ if(window.checkTutorialCommand) window.checkTutorialCommand(segments[j]); }catch(e){}
         saveState();
@@ -4154,11 +4274,19 @@ Wichtig: Nach dem Kopieren → logwipe, sonst bleiben Spuren.` };
   }
 
   function doReset(withMessage){
+    // Settings (Difficulty, Audio, Reduced-Motion, Konzept-Karten-Status) sind nicht
+    // run-spezifisch — sie überleben einen Reset, damit Spieler*innen ihre Präferenzen
+    // nicht jedes Mal neu setzen müssen. Replay-Log wird absichtlich geleert.
+    const preservedSettings = (state && state.settings)
+      ? JSON.parse(JSON.stringify(state.settings))
+      : null;
     localStorage.removeItem(STORAGE_KEY);
     state = structuredClone(INITIAL_STATE);
     state.flags.escaped = false;
     state.startedAt = now();
+    if(preservedSettings) state.settings = preservedSettings;
     saveState();
+    try{ if(typeof applySettings === "function") applySettings(); }catch(_e){}
     term.innerHTML = "";
     try{ if(window.clearRowTracking) window.clearRowTracking(); }catch(e){}
     promptEl.textContent = promptText();

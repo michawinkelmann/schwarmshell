@@ -8,6 +8,30 @@
   const now = ()=>new Date().toLocaleString("de-DE");
   const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
 
+  // Scrollback-Limit: ältere DOM-Zeilen werden getrimmt, damit lange Sessions nicht laggen
+  // oder das DOM aufblähen. Das Replay-Log (state.replayLog) bleibt davon unberührt.
+  const MAX_SCROLLBACK_ROWS = 500;
+  function trimTerminalScrollback(){
+    if(!term) return;
+    const rows = term.children;
+    if(rows.length <= MAX_SCROLLBACK_ROWS) return;
+    const removeCount = rows.length - MAX_SCROLLBACK_ROWS;
+    for(let i=0;i<removeCount;i++){
+      const child = term.firstElementChild;
+      if(!child) break;
+      if(child === lastInputRow) lastInputRow = null;
+      if(child === lastOutputRow) lastOutputRow = null;
+      term.removeChild(child);
+    }
+    if(removeCount > 0 && !term.dataset.trimmedNoticeShown){
+      const notice = document.createElement("div");
+      notice.className = "row";
+      notice.innerHTML = '<span class="p">… ältere Zeilen wurden ausgeblendet (clear leert das Terminal komplett).</span>';
+      term.insertBefore(notice, term.firstElementChild);
+      term.dataset.trimmedNoticeShown = "1";
+    }
+  }
+
   function escapeHtml(s){
     return String(s)
       .replaceAll("&","&amp;")
@@ -43,6 +67,7 @@
     else d.textContent = text;
     term.appendChild(d);
     markLatestRow(d, kind);
+    trimTerminalScrollback();
     term.scrollTop = term.scrollHeight;
   }
   function rowHtml(html, kind="output"){
@@ -51,8 +76,49 @@
     d.innerHTML = html;
     term.appendChild(d);
     markLatestRow(d, kind);
+    trimTerminalScrollback();
     term.scrollTop = term.scrollHeight;
   }
+
+  // appendReplay: Eintrag in state.replayLog hängen (max 400 Einträge). Wird von runLine()
+  // genutzt, um Befehle und Ausgaben mitzuschneiden. saveState() ist optional, weil das
+  // sowieso direkt danach passiert.
+  function appendReplay(kind, text){
+    try{
+      if(typeof state === "undefined" || !state) return;
+      if(!Array.isArray(state.replayLog)) state.replayLog = [];
+      const trimmed = String(text||"").slice(0, 600);
+      state.replayLog.push({ kind: (kind==="input" ? "input" : "output"), text: trimmed, t: Date.now() });
+      if(state.replayLog.length > 400){
+        state.replayLog = state.replayLog.slice(-400);
+      }
+    }catch(_err){}
+  }
+  window.appendReplay = appendReplay;
+
+  // toast: kurze nicht-blockierende Erfolgs-/Hinweis-Meldung am Bildschirmrand.
+  // type ∈ "success" | "info" | "warn" (default "info"). Kein DOM-Crash wenn Container fehlt.
+  function toast(message, opts={}){
+    try{
+      const container = el("toastContainer");
+      if(!container) return;
+      const type = String(opts.type||"info");
+      const title = opts.title ? String(opts.title) : "";
+      const d = document.createElement("div");
+      d.className = "toast toast" + (type.charAt(0).toUpperCase() + type.slice(1));
+      d.setAttribute("role", type === "warn" ? "alert" : "status");
+      const titleHtml = title ? `<span class="toastTitle">${escapeHtml(title)}</span>` : "";
+      d.innerHTML = `${titleHtml}<span>${escapeHtml(message)}</span>`;
+      container.appendChild(d);
+      const ttl = Number.isFinite(opts.ttl) ? opts.ttl : 3200;
+      setTimeout(()=>{ try{ d.remove(); }catch(_e){} }, ttl);
+      // Optionaler Sound — Settings können das deaktivieren.
+      if(opts.audio !== false && window.playBeep){
+        try{ window.playBeep(type); }catch(_e){}
+      }
+    }catch(_err){}
+  }
+  window.toast = toast;
 
   function escapeXml(s){
     return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&apos;");

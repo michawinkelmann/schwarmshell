@@ -698,3 +698,357 @@ body{
     }
     .tutorialFocus{ position:relative; z-index:1550; box-shadow:0 0 0 2px rgba(124,244,176,.6), 0 0 0 9999px rgba(5,8,14,.58); }
     .tutorialInputFocus{ box-shadow:0 0 0 2px rgba(124,244,176,.75); border-radius:12px; }
+
+    /* ========== A11y: sichtbare Fokus-Indikatoren (vorher: outline:none ohne Ersatz) ========== */
+    :focus-visible{
+      outline:2px solid var(--accent);
+      outline-offset:2px;
+      border-radius:6px;
+    }
+    input[type="text"]:focus-visible,
+    input[type="text"]:focus{
+      outline:2px solid var(--accent);
+      outline-offset:2px;
+    }
+    .btn:focus-visible{
+      outline:2px solid var(--accent);
+      outline-offset:3px;
+    }
+    .tutorialBubble button:focus-visible,
+    .clippyTooltip button:focus-visible,
+    .startModal button:focus-visible,
+    .savegamePanel button:focus-visible,
+    .cinematicIntroPanel button:focus-visible{
+      outline:2px solid var(--accent);
+      outline-offset:3px;
+    }
+
+    /* ========== A11y: Bewegung reduzieren ========== */
+    @media (prefers-reduced-motion: reduce){
+      *, *::before, *::after{
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+    body.reducedMotion *, body.reducedMotion *::before, body.reducedMotion *::after{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+
+    /* ========== Mobile/Tablet Breakpoints ========== */
+    /* Tablet (768–1020 px): 2-Spalten-Layout, Terminal volle Breite oben */
+    @media (max-width: 1020px){
+      :root{ --top-card-height: clamp(380px, 55vh, 620px); }
+      main{
+        grid-template-columns: 1fr 1fr;
+        gap:14px;
+      }
+      .terminalCard{ grid-column: 1 / -1; }
+      .storyCard,
+      .objectivesCard,
+      .mapCard,
+      .rewardsCard,
+      .sidequestCard{ grid-column: auto; }
+      .terminalWrap{ height: auto; min-height:60vh; }
+      .storyCard .content,
+      .mapCard .content{
+        height:auto;
+        max-height: 60vh;
+      }
+    }
+    /* Smartphone (≤ 768 px): einspaltig, Terminal als Hauptkarte */
+    @media (max-width: 768px){
+      :root{ --top-card-height: clamp(320px, 50vh, 520px); }
+      header{ padding:12px 12px 0 12px; }
+      main{
+        grid-template-columns: 1fr;
+        gap:12px;
+        padding:0 12px;
+        margin:12px auto 24px auto;
+      }
+      .title{ font-size:18px; }
+      .card h2{ font-size:13px; padding:12px 12px 8px 12px; }
+      .card .content{ padding:12px; }
+      .terminal{ font-size:14px; line-height:1.5; }
+      input[type="text"]{ font-size:16px; flex:1 1 100%; min-width:0; }
+      .inputControls{ flex-wrap:wrap; gap:8px; }
+      .btn{
+        padding:11px 14px;
+        font-size:14px;
+        min-height:44px;
+        touch-action: manipulation;
+      }
+      .clippyBtn{ min-height:36px; }
+      /* iOS Zoom-Schutz: virtuelle Tastatur darf das Terminal nicht völlig verdecken */
+      .terminalWrap{
+        height:auto;
+        min-height: 56vh;
+        max-height: 78vh;
+      }
+      .storyCard .content,
+      .mapCard .content{ max-height: 50vh; }
+      .footerTips{ font-size:11px; }
+      .rewards{ grid-template-columns: 1fr; }
+      .mapTools{ font-size:12px; }
+      /* Tutorial-Bubble darf auf kleinem Screen nicht überlappen */
+      .tutorialBubble{
+        max-width: calc(100vw - 24px);
+        left: 12px !important;
+        right: 12px;
+      }
+    }
+    /* Sehr kleine Phones (≤ 480 px) */
+    @media (max-width: 480px){
+      .title{ font-size:16px; }
+      .pill{ font-size:11px; }
+      .terminal{ font-size:13px; }
+      .btn{ padding:10px 12px; font-size:13px; }
+    }
+
+    /* ========== A11y: Map-Symbole nicht nur über Farbe unterscheiden ========== */
+    /* Quest-Eintrag bekommt zusätzlich fette Schrift + Unterstrich-Akzent — wichtig für
+       Rot-Grün-Schwäche, wo Aktuell und Quest sich farblich kaum unterscheiden. */
+    .mapQuestEntry{
+      text-decoration: underline dotted rgba(255,215,127,.7);
+      text-underline-offset: 3px;
+    }
+    .mapUnvisitedEntry{ font-style: italic; opacity:.85; }
+
+    /* ========== Toast-Notifications (Quest-Erfolg, Badge-Unlock) ========== */
+    .toastContainer{
+      position:fixed;
+      top:16px;
+      right:16px;
+      z-index:2200;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      pointer-events:none;
+      max-width: min(360px, calc(100vw - 32px));
+    }
+    .toast{
+      pointer-events:auto;
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:13px;
+      line-height:1.4;
+      border:1px solid var(--line);
+      background: rgba(15,22,32,.97);
+      color: var(--text);
+      box-shadow: 0 10px 24px rgba(0,0,0,.4);
+      animation: toastIn .25s ease-out;
+      max-width:100%;
+      word-break: break-word;
+    }
+    .toast.toastSuccess{
+      border-color: rgba(124,244,176,.55);
+      background: linear-gradient(180deg, rgba(20,38,28,.97), rgba(15,22,32,.97));
+      color:#dfffe8;
+    }
+    .toast.toastInfo{
+      border-color: rgba(91,156,255,.45);
+      color:#e0ebff;
+    }
+    .toast.toastWarn{
+      border-color: rgba(255,215,127,.55);
+      color:#ffe7b2;
+    }
+    .toast .toastTitle{
+      display:block;
+      font-weight:700;
+      margin-bottom:2px;
+    }
+    @keyframes toastIn{
+      from{ transform: translateX(110%); opacity:0; }
+      to{ transform: translateX(0); opacity:1; }
+    }
+    @media (max-width: 768px){
+      .toastContainer{
+        top: auto;
+        bottom: 12px;
+        right: 12px;
+        left: 12px;
+        max-width: none;
+      }
+    }
+
+    /* ========== Settings-Panel (Audio / Difficulty / Replay / Reduced-Motion) ========== */
+    .settingsBtn{
+      position:fixed;
+      bottom:12px;
+      right:12px;
+      z-index:1400;
+      border:1px solid var(--line);
+      background: rgba(15,22,32,.92);
+      color: var(--text);
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      cursor:pointer;
+      font-size:18px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.4);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .settingsBtn:hover{ border-color: rgba(124,244,176,.4); }
+    .settingsOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(4,8,14,.82);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:2300;
+      padding:16px;
+    }
+    .settingsPanel{
+      width:min(560px, 100%);
+      max-height: 88vh;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(15,22,32,.98), rgba(9,14,20,.98));
+      box-shadow: var(--shadow);
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .settingsPanel h2{ margin:0; font-size:18px; }
+    .settingsGroup{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px;
+      background: rgba(0,0,0,.18);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .settingsGroup h3{
+      margin:0;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      color:var(--muted);
+    }
+    .settingsGroup p{ margin:0; font-size:12px; color:var(--muted); line-height:1.45; }
+    .settingsRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .settingsRow .btn[aria-pressed="true"]{
+      border-color: rgba(124,244,176,.7);
+      background: rgba(124,244,176,.16);
+      color:#dfffe8;
+    }
+
+    /* ========== Replay Overlay ========== */
+    .replayOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(4,8,14,.85);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:2400;
+      padding:16px;
+    }
+    .replayPanel{
+      width:min(720px, 100%);
+      max-height: 88vh;
+      overflow:auto;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(15,22,32,.98), rgba(9,14,20,.98));
+      box-shadow: var(--shadow);
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .replayPanel h2{ margin:0; }
+    .replayBody{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background: rgba(0,0,0,.32);
+      padding:10px 12px;
+      font-family: var(--mono);
+      font-size:13px;
+      line-height:1.5;
+      max-height: 60vh;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+    .replayLine{ display:block; }
+    .replayLine.input{ color: var(--accent); }
+    .replayLine.output{ color: var(--text); }
+    .replayCaret{ color: var(--muted); margin-right: 4px; }
+
+    /* ========== Konzept-Karten (Mini-Tutorials zu Permissions / Prozesse / Pipes) ========== */
+    .conceptOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(4,8,14,.84);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:2350;
+      padding:16px;
+    }
+    .conceptPanel{
+      width:min(640px, 100%);
+      max-height: 86vh;
+      overflow:auto;
+      border:1px solid rgba(124,244,176,.45);
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(14,26,22,.98), rgba(9,14,20,.98));
+      box-shadow: var(--shadow);
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .conceptPanel h2{
+      margin:0;
+      font-size:18px;
+      color:#b6ffd1;
+    }
+    .conceptPanel .conceptKicker{
+      margin:0;
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color: var(--muted);
+    }
+    .conceptPanel p{ margin:0; line-height:1.5; font-size:14px; }
+    .conceptPanel .conceptExample{
+      display:block;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.32);
+      border-radius:10px;
+      padding:10px 12px;
+      font-family: var(--mono);
+      font-size:13px;
+      color:#dfffe8;
+      white-space: pre-wrap;
+    }
+    .conceptPanel .conceptHint{ font-size:12px; color: var(--muted); }
+    .conceptPanel .startActions{ justify-content:flex-end; }
+
+    /* ========== Clippy: 2-Stufen-System (Hint zuerst, Solution auf Nachfrage) ========== */
+    .clippyHintBlock{
+      border:1px dashed rgba(124,244,176,.45);
+      border-radius:10px;
+      padding:10px 12px;
+      background: rgba(124,244,176,.06);
+      font-size:13px;
+      line-height:1.5;
+      margin:0 0 10px 0;
+    }
+    .clippyHintBlock strong{ color:#b6ffd1; }
+    .clippySteps[hidden]{ display:none; }

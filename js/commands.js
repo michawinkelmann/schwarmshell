@@ -11,6 +11,7 @@ const COMMAND_REGISTRY = {
   "connect": { group: "Sidequest", desc: "(Sidequest) SUPER-PC verbinden", usage: "connect superpc", example: "connect superpc" },
   "cp": { group: "Files", desc: "kopieren", usage: "cp <src> <dst>", example: "cp /boss/patchlord.sh ~/workbench/" },
   "echo": { group: "Text", desc: "Text ausgeben", usage: "echo \"<text>\" [> file] [>> file]", example: "echo \"hi\"" },
+  "edit": { group: "Files", desc: "(Phase 6) eigenes Skript im Editor öffnen", usage: "edit <file>", example: "edit ~/scripts/hello.sh" },
   "exit": { group: "Sidequest", desc: "Ebene verlassen", usage: "exit", example: "exit" },
   "find": { group: "Text", desc: "findet Dateien", usage: "find <path> -name \"<pattern>\"", example: "find / -name \"*.log\"" },
   "grep": { group: "Text", desc: "sucht Textmuster", usage: "grep <pattern> <file>", example: "grep glitch iserv.log" },
@@ -378,6 +379,8 @@ function allowedCommands(){
     } else if(state.phase >= 5){
       // Phase 5: Alles aus 1–4 ist freigeschaltet (Real Life).
       base = ["help","hint","ls","cd","pwd","cat","clear","echo","grep","mkdir","touch","rm","cp","mv","find","talk","choose","quests","inventory","reset","man","chmod","ps","top","kill","history","alias","mentor_clear"];
+      // Phase 6 schaltet zusätzlich den Editor frei.
+      if(state.phase >= 6) base.push("edit");
     }
 
     // "assemble" is only meaningful after all fragments are collected
@@ -1129,8 +1132,54 @@ Eingabe: choose <nummer>`;
       row("🧑‍🤝‍🧑 Phase 4 unlocked. Mentor-Arc gestartet: Du bist jetzt der Shell-Coach.", "ok");
       row("Check: cat /mentor_hub/quests.txt  und dann talk noah", "p");
     }
-
+    if(state.phase === 5 && state.flags && state.flags.job_arc_done){
+      state.phase = 6;
+      state.cwd = "/scriptlab";
+      saveState();
+      promptEl.textContent = promptText();
+      renderLocation();
+      renderObjectives();
+      renderPhasePill();
+      row("🧪 Phase 6 unlocked. Scriptlab ist offen — du schreibst jetzt eigene Skripte.", "ok");
+      row("Lies: cat /scriptlab/README.txt  und  cat /scriptlab/auftraege.txt", "p");
+    }
   }
+
+  // Quest-Auswertung für Phase 6: prüft den Inhalt der gespeicherten Skripte
+  // gegen einfache Patterns. Wird vom Editor nach jedem Speichern aufgerufen,
+  // damit die Spieler sofort feedback bekommen.
+  function evaluateScriptQuests(){
+    try{
+      if(state.phase < 6) return;
+      const get = (p)=>{ const n = getNode(p); return n && n.type === "file" ? String(n.content||"") : ""; };
+      const helloContent = get("/home/player/scripts/hello.sh");
+      const helloPerm = state.perms && state.perms["/home/player/scripts/hello.sh"];
+      const helloOk = /(^|\n)\s*echo\b/.test(helloContent) && helloPerm && helloPerm.exec;
+      if(helloOk && !state.flags.script_hello){
+        state.flags.script_hello = true;
+        award("badge_hello_script");
+        row("Quest erfüllt: Hello-World-Skript ✅", "ok");
+      }
+      const greet = get("/home/player/scripts/greet.sh");
+      // mindestens eine VAR=... Zeile + ein echo, das $-Variable nutzt
+      const greetOk = /(^|\n)\s*[A-Za-z_]\w*\s*=/.test(greet) && /echo\b[^\n]*\$/.test(greet);
+      if(greetOk && !state.flags.script_variable){
+        state.flags.script_variable = true;
+        award("badge_var_script");
+        row("Quest erfüllt: Skript mit Variable ✅", "ok");
+      }
+      const cleanup = get("/home/player/scripts/cleanup.sh");
+      const rmCount = (cleanup.match(/(^|\n)\s*rm\b/g) || []).length;
+      if(rmCount >= 2 && !state.flags.script_cleanup){
+        state.flags.script_cleanup = true;
+        award("badge_cleanup_script");
+        row("Quest erfüllt: Cleanup-Skript ✅", "ok");
+      }
+      saveState();
+      renderObjectives();
+    }catch(_e){}
+  }
+  window.evaluateScriptQuests = evaluateScriptQuests;
 
   function runScript(path, argv){
     const p = normPath(path);
@@ -1898,6 +1947,14 @@ case "man":{
           state.jobArc.stage = Math.max(0, state.jobArc.stage||0);
           row("📎 Neuer Story-Arc unlocked: Phase 5 — Real Life.", "ok");
           row("Tipp: cat /arbeitsamt/start.txt  und dann talk beamter", "p");
+        }
+
+        // Phase 6: scriptlab_entered Trigger beim Betreten des Scriptlabs.
+        if(target === "/scriptlab" && state.phase >= 6){
+          if(state.flags && !state.flags.scriptlab_entered){
+            state.flags.scriptlab_entered = true;
+            row("Tipp: lies cat README.txt und cat auftraege.txt — dann edit ~/scripts/hello.sh", "p");
+          }
         }
 
         // Quest-Spawn: Möbelfabrik hat einen neuen Lag-Prozess, sobald die Quest aktiv ist.
@@ -3385,6 +3442,22 @@ const outText = (extra + open).trim();
         if(!w.ok) return { ok:false, out:`touch: ${w.err}` };
         row("Tip: Wenn es um Frag2 geht: cat ~/workbench/patches/frag2.txt", "p");
         return { ok:true, out:"" };
+      }
+
+      case "edit":{
+        // Phase 6 — eigenes Skript schreiben. Öffnet den Editor-Modal in main.js
+        // mit dem aktuellen Inhalt der Datei. Speichern triggert evaluateScriptQuests().
+        if(state.phase < 6) return { ok:false, out:"edit ist ab Phase 6 verfügbar (nach Abschluss des Job-Arcs)." };
+        if(!args[0]) return { ok:false, out:"edit: usage: edit <file>" };
+        const path = normPath(args[0]);
+        if(!path.startsWith("/home/player/")) return { ok:false, out:"edit: nur unter ~/... erlaubt." };
+        const existing = getNode(path);
+        const initial = (existing && existing.type === "file") ? String(existing.content||"") : "";
+        if(typeof window.openScriptEditor === "function"){
+          window.openScriptEditor(path, initial);
+          return { ok:true, out:`(Editor geöffnet: ${path})` };
+        }
+        return { ok:false, out:"edit: Editor nicht verfügbar (UI nicht geladen)." };
       }
 
       case "rm":{

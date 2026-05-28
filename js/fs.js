@@ -825,12 +825,13 @@
   function renderPhasePill(){
     const pill = document.getElementById("phasePill");
     if(!pill) return;
-    let label = `Phase ${state.phase}`;
-    if(state.phase===1) label += " · Tutorial";
-    if(state.phase===2) label += " · Quests";
-    if(state.phase===3) label += " · Bossfight";
-    if(state.phase===4) label += " · Mentor";
-    if(state.phase===5) label += " · Real Life";
+    // i18n: Suffix kommt aus dem Wörterbuch, Format aus "phase.label".
+    // Fallback (kein window.t verfügbar) bleibt deutsch.
+    const suffixKey = "phase.suffix." + state.phase;
+    const suffix = (typeof window.t === "function") ? window.t(suffixKey) : suffixKey;
+    const label = (typeof window.t === "function")
+      ? window.t("phase.label", state.phase, suffix)
+      : `Phase ${state.phase} · ${suffix}`;
     pill.textContent = "Phase: " + label;
   }
 

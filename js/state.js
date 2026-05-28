@@ -29,6 +29,11 @@
       job_arc_unlocked:false,
       job_arc_started:false,
       job_arc_done:false,
+      // Phase 6 — Scriptlab
+      scriptlab_entered:false,
+      script_hello:false,
+      script_variable:false,
+      script_cleanup:false,
       talked:{},
     },
     fragments: { f1:null, f2:null, f3:null },
@@ -61,7 +66,8 @@
       audio: true,                  // kurze Web-Audio-Töne bei Erfolg
       reducedMotion: false,         // zusätzliche Bewegungs-Reduktion (ergänzt prefers-reduced-motion)
       conceptsSeen: {},             // welche Konzept-Karten der Spieler schon gesehen hat
-      conceptsDisabled: false       // global "nicht mehr zeigen"
+      conceptsDisabled: false,      // global "nicht mehr zeigen"
+      locale: "de"                  // UI-Sprache: "de" (Default) | "en"
     },
     replayLog: []                   // [{ kind:"input"|"output", text, t }] — auf ~400 Einträge begrenzt
   };
@@ -103,6 +109,7 @@
       if(typeof s.settings.reducedMotion !== "boolean") s.settings.reducedMotion = false;
       if(!s.settings.conceptsSeen || typeof s.settings.conceptsSeen !== "object") s.settings.conceptsSeen = {};
       if(typeof s.settings.conceptsDisabled !== "boolean") s.settings.conceptsDisabled = false;
+      if(!["de","en"].includes(s.settings.locale)) s.settings.locale = "de";
       if(!Array.isArray(s.replayLog)) s.replayLog = [];
       // Replay-Log hart begrenzen, damit localStorage nicht überläuft (5–10 MB pro Origin).
       if(s.replayLog.length > 400) s.replayLog = s.replayLog.slice(-400);
@@ -206,6 +213,9 @@
     badge_alias:    { name:"QoL Wizard", desc:"Alias = Shortcut. Speedrun vibes.", img: svgData("Badge: Alias","macro unlocked","arena") },
     badge_mentor:   { name:"Shell Coach", desc:"Du hast den Squad gecarried (nett).", img: svgData("Badge: Mentor","Phase 4 clear","arena") },
     badge_job:      { name:"Real‑Life Starter", desc:"Du hast den Sprung aus dem Game ins echte Leben gemacht.", img: svgData("Badge: Job","Phase 5 clear","office") },
+    badge_hello_script:   { name:"Skript-Premiere",  desc:"Erstes eigenes Bash-Skript geschrieben und ausgeführt.", img: svgData("Badge: Hello","First script","arena") },
+    badge_var_script:     { name:"Variable Master",  desc:"Du hast Variablen in einem Skript benutzt.", img: svgData("Badge: Vars","NAME=…","lab") },
+    badge_cleanup_script: { name:"Cleanup Crew",     desc:"Du hast ein Cleanup-Skript mit mehreren rm-Aufrufen gebaut.", img: svgData("Badge: Cleanup","rm-rm","server") },
   };
 
   function award(id){

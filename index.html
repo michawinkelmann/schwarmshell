@@ -115,11 +115,19 @@
       </div>
     </div>
     <div class="settingsGroup">
-      <h3>Replay</h3>
-      <p>Zeigt deine letzten Befehle und Ausgaben als kompakten Spielmitschnitt.</p>
+      <h3 id="settingsReplayLabel">Replay</h3>
+      <p id="settingsReplayDesc">Zeigt deine letzten Befehle und Ausgaben als kompakten Spielmitschnitt.</p>
       <div class="settingsRow">
         <button class="btn" id="settingsReplay" type="button">Replay anzeigen</button>
         <button class="btn" id="settingsReplayClear" type="button">Mitschnitt löschen</button>
+      </div>
+    </div>
+    <div class="settingsGroup">
+      <h3 id="settingsLanguageLabel">Sprache</h3>
+      <p id="settingsLanguageDesc">Wechselt die Sprache der Benutzeroberfläche. Spielinhalte bleiben Deutsch.</p>
+      <div class="settingsRow" role="radiogroup" aria-label="Sprache">
+        <button class="btn" data-locale="de" type="button" aria-pressed="true">Deutsch</button>
+        <button class="btn" data-locale="en" type="button" aria-pressed="false">English</button>
       </div>
     </div>
     <div class="startActions">
@@ -136,6 +144,19 @@
     <div class="startActions">
       <button class="btn" id="replayCopy" type="button">In Zwischenablage</button>
       <button class="btn" id="replayClose" type="button">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<div class="editorOverlay" id="editorOverlay" role="dialog" aria-modal="true" aria-labelledby="editorTitle" hidden>
+  <div class="editorPanel">
+    <h2 id="editorTitle">Skript-Editor</h2>
+    <p class="small" id="editorPath">—</p>
+    <textarea id="editorTextarea" rows="14" spellcheck="false" aria-label="Skript-Inhalt"></textarea>
+    <p class="small" id="editorHint">Tipp: Mit Strg/Cmd+S speicherst du · Esc schließt ohne Speichern.</p>
+    <div class="startActions">
+      <button class="btn" id="editorSave" type="button">Speichern</button>
+      <button class="btn" id="editorCancel" type="button">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -243,6 +264,9 @@
 </main>
 
 
+<script src="js/i18n.js"></script>
+<script src="js/data/fs.js"></script>
+<script src="js/data/npcs.js"></script>
 <script src="js/data.js"></script>
 <script src="js/core.js"></script>
 <script src="js/state.js"></script>

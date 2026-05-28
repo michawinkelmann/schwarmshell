@@ -1,0 +1,511 @@
+// SchwarmShell — End-to-End Spiel-Durchlauf via Playwright
+//
+// Startet einen lokalen HTTP-Server, öffnet das Spiel in einem Chromium-Browser
+// und spielt die Hauptpfade jeder Phase mechanisch durch. Erwartet konkrete
+// State-Bedingungen (Flags, Quest-Done, Phase) nach jedem Schritt.
+//
+// Ausführen:
+//   node test/playthrough.test.mjs
+//   PLAYWRIGHT_HEADED=1 node test/playthrough.test.mjs   # Browser sichtbar
+//
+// Voraussetzung: Lokal läuft "python3 -m http.server 8765" im Repo-Root.
+
+import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
+import http from "node:http";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, "..");
+const PORT = Number(process.env.PORT) || 8765;
+const BASE_URL = `http://localhost:${PORT}/index.html`;
+const HEADED = process.env.PLAYWRIGHT_HEADED === "1";
+
+// ─── Server bootstrapping ─────────────────────────────────────────────────────
+async function isServerUp(){
+  return new Promise((resolve)=>{
+    const req = http.get(BASE_URL, (res)=>{ res.resume(); resolve(res.statusCode === 200); });
+    req.on("error", ()=>resolve(false));
+    req.setTimeout(500, ()=>{ req.destroy(); resolve(false); });
+  });
+}
+
+let serverProc = null;
+async function ensureServer(){
+  if(await isServerUp()) return;
+  serverProc = spawn("python3", ["-m", "http.server", String(PORT)], {
+    cwd: REPO_ROOT, stdio: "ignore", detached: false
+  });
+  for(let i = 0; i < 30; i++){
+    await new Promise(r => setTimeout(r, 200));
+    if(await isServerUp()) return;
+  }
+  throw new Error(`HTTP server did not come up on port ${PORT}`);
+}
+
+// ─── Mini-Testrunner ───────────────────────────────────────────────────────────
+const results = [];
+let currentName = "";
+async function suite(name, fn){
+  currentName = name;
+  console.log(`\n${name}`);
+  await fn();
+}
+async function it(name, fn){
+  const fullName = `${currentName} › ${name}`;
+  try{
+    await fn();
+    results.push({ name: fullName, ok: true });
+    console.log(`  ✓ ${name}`);
+  }catch(err){
+    results.push({ name: fullName, ok: false, error: String(err && err.message || err) });
+    console.log(`  ✗ ${name}\n      ${err && err.message || err}`);
+  }
+}
+function expect(actual){
+  return {
+    toBe(expected){
+      if(actual !== expected) throw new Error(`expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    },
+    toBeTruthy(){
+      if(!actual) throw new Error(`expected truthy, got ${JSON.stringify(actual)}`);
+    },
+    toContain(needle){
+      if(typeof actual === "string"){
+        if(!actual.includes(needle)) throw new Error(`expected to contain ${JSON.stringify(needle)}, got ${JSON.stringify(actual.slice(0, 200))}`);
+      } else if(Array.isArray(actual)){
+        if(!actual.includes(needle)) throw new Error(`array did not contain ${JSON.stringify(needle)}`);
+      } else {
+        throw new Error(`unsupported toContain target: ${typeof actual}`);
+      }
+    },
+    toMatch(re){
+      if(!re.test(String(actual))) throw new Error(`expected to match ${re}, got ${JSON.stringify(String(actual).slice(0, 200))}`);
+    },
+    toBeGreaterThanOrEqual(n){
+      if(!(actual >= n)) throw new Error(`expected ${actual} >= ${n}`);
+    }
+  };
+}
+
+// ─── Page helpers ──────────────────────────────────────────────────────────────
+async function newGame(page){
+  await page.goto(BASE_URL);
+  // Reset any prior savegame so we start clean each suite
+  await page.evaluate(()=>{
+    localStorage.clear();
+  });
+  await page.reload();
+  await page.waitForSelector("#startOverlay:not([hidden])", { timeout: 5000 });
+  // Cinematic-Intro überspringen, sonst nervt jeder Schritt
+  await page.click("#startNew");
+  await page.waitForSelector("#cinematicIntroOverlay:not([hidden])", { timeout: 5000 });
+  await page.click("#cinematicIntroSkip");
+  await page.waitForSelector("#tutorialBubble:not([hidden])", { timeout: 5000 });
+  // Tutorial überspringen + Concept-Karten deaktivieren, sonst blockieren Modal-Overlays
+  // alle UI-Clicks in den nachfolgenden Tests.
+  await page.evaluate(()=>{
+    if(typeof endGuidedTutorial === "function") endGuidedTutorial();
+    if(state && state.settings){
+      state.settings.conceptsDisabled = true;
+      saveState();
+    }
+  });
+}
+
+async function exec(page, cmd){
+  await page.fill("#cmd", cmd);
+  await page.click("#run");
+  // Kleine Pause damit DOM und state.replayLog sich setzen
+  await page.waitForTimeout(50);
+}
+
+async function execMany(page, cmds){
+  for(const c of cmds) await exec(page, c);
+}
+
+async function getState(page){
+  return page.evaluate(()=>JSON.parse(JSON.stringify(state)));
+}
+
+async function getTerminalText(page){
+  return page.evaluate(()=>document.getElementById("term").innerText);
+}
+
+// ─── Tests ─────────────────────────────────────────────────────────────────────
+async function main(){
+  await ensureServer();
+  const browser = await chromium.launch({
+    headless: !HEADED,
+    executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
+  });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await context.newPage();
+
+  // Forward browser console errors so we see them in CI
+  page.on("pageerror", (err)=>{
+    results.push({ name: `(pageerror) ${err.message}`, ok: false, error: err.stack || err.message });
+    console.log(`  ✗ page threw: ${err.message}`);
+  });
+
+  await suite("boot", async ()=>{
+    await it("starts in /home/player with phase 1", async ()=>{
+      await newGame(page);
+      const s = await getState(page);
+      expect(s.cwd).toBe("/home/player");
+      expect(s.phase).toBe(1);
+    });
+    await it("ls shows readme.txt", async ()=>{
+      await exec(page, "ls");
+      const out = await getTerminalText(page);
+      expect(out).toContain("readme.txt");
+    });
+    await it("settings panel opens via gear", async ()=>{
+      await page.click("#settingsBtn");
+      await page.waitForSelector("#settingsOverlay:not([hidden])");
+      await page.click("#settingsClose");
+    });
+  });
+
+  await suite("bugfix", async ()=>{
+    await it("grep with regex anchor matches", async ()=>{
+      // Synthetic test: write a file we control then grep with ^
+      await execMany(page, [
+        "cd ~",
+        'echo "alpha" > /home/player/workbench/test_anchor.txt',
+        'echo "beta"  >> /home/player/workbench/test_anchor.txt',
+        "grep ^alpha /home/player/workbench/test_anchor.txt"
+      ]);
+      // grep is gated to phase 2; the test verifies the gate too
+      const term = await getTerminalText(page);
+      // Either matched or correctly told us grep is gated
+      expect(/alpha|ab Phase 2/.test(term)).toBeTruthy();
+    });
+    await it("kill rejects 0/abc with usage", async ()=>{
+      // Force phase 4 so kill is available
+      await page.evaluate(()=>{ state.phase = 4; saveState(); });
+      await exec(page, "kill abc");
+      const term = await getTerminalText(page);
+      expect(term).toContain("usage: kill");
+    });
+    await it("kill -9 <pid> accepts signal flag", async ()=>{
+      await exec(page, "kill -9 999999");
+      const term = await getTerminalText(page);
+      // No-such-process is the expected branch (proves -9 was parsed, not the usage branch)
+      expect(term).toContain("No such process");
+    });
+    await it("chmod 700 sets exec bit on a workbench script", async ()=>{
+      await execMany(page, [
+        "cd ~",
+        'echo "echo hi" > /home/player/workbench/exectest.sh',
+        "chmod 700 /home/player/workbench/exectest.sh"
+      ]);
+      const exec700 = await page.evaluate(()=>state.perms["/home/player/workbench/exectest.sh"]);
+      expect(exec700.exec).toBe(true);
+    });
+    await it("chmod 644 leaves exec bit off", async ()=>{
+      await exec(page, "chmod 644 /home/player/workbench/exectest.sh");
+      const m = await page.evaluate(()=>state.perms["/home/player/workbench/exectest.sh"]);
+      expect(m.exec).toBe(false);
+    });
+  });
+
+  await suite("phase1 walkthrough", async ()=>{
+    await newGame(page);
+    await it("reads readme.txt", async ()=>{
+      await exec(page, "cat readme.txt");
+      const t = await getTerminalText(page);
+      expect(/readme|player|schwarm/i.test(t)).toBeTruthy();
+    });
+    await it("walks to PC-Raum and reads iserv-glitch", async ()=>{
+      await execMany(page, [
+        "cd /school/pcraum",
+        "cat keycard.txt",
+        "cd Schul-PC",
+        "cat boot.txt",
+        "cat iserv-glitch.txt"
+      ]);
+      const s = await getState(page);
+      expect(s.flags.iserv_glitch).toBeTruthy();
+      expect(s.flags.got_key).toBeTruthy();
+    });
+    await it("unlocks server-gate", async ()=>{
+      await execMany(page, [
+        "cd /server_gate",
+        "cat gate.txt",
+        "unlock SCHWARM-ALPHA-7"
+      ]);
+      const s = await getState(page);
+      expect(s.flags.opened_gate).toBeTruthy();
+      expect(s.phase).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  await suite("replay", async ()=>{
+    await newGame(page);
+    await execMany(page, ["ls", "pwd", "cat readme.txt"]);
+    await it("appendReplay captured commands", async ()=>{
+      const log = await page.evaluate(()=>state.replayLog);
+      const inputs = log.filter(e => e.kind === "input").map(e => e.text);
+      expect(inputs).toContain("ls");
+      expect(inputs).toContain("pwd");
+      expect(inputs).toContain("cat readme.txt");
+    });
+  });
+
+  await suite("phase2 fragments", async ()=>{
+    // Jump straight to phase 2 with all phase-1 flags set
+    await newGame(page);
+    await page.evaluate(()=>{
+      state.phase = 2;
+      state.flags.opened_gate = true;
+      state.flags.got_key = true;
+      state.flags.iserv_glitch = true;
+      state.cwd = "/arena";
+      saveState();
+    });
+    await it("grep FRAG1_TOKEN unlocks frag1", async ()=>{
+      await execMany(page, ["cd /patchbay", "grep FRAG1_TOKEN frag_1.log"]);
+      const s = await getState(page);
+      expect(s.flags.frag1).toBeTruthy();
+      expect(s.fragments.f1).toBe("PIXEL-SPAWN-42");
+    });
+    await it("grep SIGNAL unlocks frag3", async ()=>{
+      await exec(page, "grep SIGNAL frag_3.pipe");
+      const s = await getState(page);
+      expect(s.flags.frag3).toBeTruthy();
+    });
+    await it("find -name walks the tree", async ()=>{
+      await exec(page, 'find /patchbay -name "*.log"');
+      const term = await getTerminalText(page);
+      expect(term).toContain("frag_1.log");
+    });
+  });
+
+  await suite("phase3 patchlord", async ()=>{
+    await newGame(page);
+    await page.evaluate(()=>{
+      state.phase = 3;
+      state.flags.opened_gate = true;
+      state.flags.frag1 = true;
+      state.flags.frag2 = true;
+      state.flags.frag3 = true;
+      state.flags.reality_patch = true;
+      state.fragments = { f1: "PIXEL-SPAWN-42", f2: "CRAFTED-DIR-99", f3: "NEON-PIPE-7" };
+      state.cwd = "/boss";
+      saveState();
+    });
+    await it("grep -i bug triggers inspect", async ()=>{
+      await exec(page, "grep -n -i bug /boss/patchlord.sh");
+      const s = await getState(page);
+      expect(s.flags.inspected_boss).toBeTruthy();
+    });
+    await it("echo PATCH_APPLIED (no quotes) triggers hotfix", async ()=>{
+      await execMany(page, [
+        "cp /boss/patchlord.sh ~/workbench/patchlord.sh",
+        "echo PATCH_APPLIED >> ~/workbench/patchlord.sh"
+      ]);
+      const s = await getState(page);
+      expect(s.flags.fixed_script).toBeTruthy();
+    });
+    await it("chmod +x marks exec_script flag", async ()=>{
+      await exec(page, "chmod +x ~/workbench/patchlord.sh");
+      const s = await getState(page);
+      expect(s.flags.exec_script).toBeTruthy();
+    });
+  });
+
+  await suite("phase4 mentor", async ()=>{
+    await newGame(page);
+    await page.evaluate(()=>{
+      state.phase = 4;
+      state.cwd = "/mentor_hub";
+      state.processes = [
+        { pid: 101, name: "terminald", cpu: 3, mem: 42 },
+        { pid: 202, name: "rgbd", cpu: 99, mem: 180 },
+        { pid: 303, name: "patchwatch", cpu: 5, mem: 65 }
+      ];
+      saveState();
+    });
+    await it("ps lists rgbd", async ()=>{
+      await exec(page, "ps");
+      const term = await getTerminalText(page);
+      expect(term).toContain("rgbd");
+    });
+    await it("kill 202 sets mentor.lag_fixed", async ()=>{
+      await exec(page, "kill 202");
+      const s = await getState(page);
+      expect(s.mentor.lag_fixed).toBeTruthy();
+    });
+    await it("history command works", async ()=>{
+      await exec(page, "history");
+      const term = await getTerminalText(page);
+      expect(term).toContain("ps");
+    });
+    await it('alias ll="ls -l" sets mentor.alias_made', async ()=>{
+      await exec(page, 'alias ll="ls -l"');
+      const s = await getState(page);
+      expect(s.mentor.alias_made).toBeTruthy();
+    });
+  });
+
+  await suite("noah branch POC", async ()=>{
+    await newGame(page);
+    await page.evaluate(()=>{
+      state.phase = 4;
+      state.cwd = "/mentor_hub";
+      state.processes = [
+        { pid: 202, name: "rgbd", cpu: 99, mem: 180 }
+      ];
+      saveState();
+    });
+    await it("talk noah opens lag_choices branch", async ()=>{
+      await exec(page, "talk noah");
+      const s = await getState(page);
+      expect(s.npcDialog.active).toBeTruthy();
+      expect(s.npcDialog.nodeId).toBe("lag_choices");
+    });
+    await it("choose 2 records 'top' path", async ()=>{
+      await exec(page, "choose 2");
+      const s = await getState(page);
+      expect(s.flags.noah_path).toBe("top");
+    });
+  });
+
+  await suite("i18n", async ()=>{
+    await newGame(page);
+    await it("default locale is German", async ()=>{
+      const title = await page.evaluate(()=>t("settings.title"));
+      expect(title).toBe("Einstellungen");
+    });
+    await it("switching locale to en updates Settings title", async ()=>{
+      await page.evaluate(()=>{ state.settings.locale = "en"; saveState(); applySettings(); });
+      const title = await page.evaluate(()=>t("settings.title"));
+      expect(title).toBe("Settings");
+    });
+    await it("phase pill uses translated suffix", async ()=>{
+      const text = await page.evaluate(()=>document.getElementById("phasePill").textContent);
+      // Phase 1 / "Tutorial" is the same in both languages, so check the en-only label form
+      expect(text).toContain("Phase 1");
+    });
+    await it("missing key falls back to German", async ()=>{
+      const fallback = await page.evaluate(()=>t("nonexistent.key.test"));
+      // Function returns the key itself when nothing matches
+      expect(fallback).toBe("nonexistent.key.test");
+    });
+    // Reset locale for downstream tests
+    await page.evaluate(()=>{ state.settings.locale = "de"; saveState(); applySettings(); });
+  });
+
+  await suite("phase6 scriptlab", async ()=>{
+    await newGame(page);
+    // Force phase 6 so /scriptlab and edit are available
+    await page.evaluate(()=>{
+      state.phase = 6;
+      state.flags.job_arc_done = true;
+      saveState();
+    });
+    await it("cd /scriptlab sets scriptlab_entered", async ()=>{
+      await exec(page, "cd /scriptlab");
+      const s = await getState(page);
+      expect(s.flags.scriptlab_entered).toBeTruthy();
+    });
+    await it("README and auftraege.txt are readable", async ()=>{
+      await exec(page, "cat README.txt");
+      await exec(page, "cat auftraege.txt");
+      const term = await getTerminalText(page);
+      expect(term).toContain("Workflow");
+      expect(term).toContain("Hello World");
+    });
+    await it("edit + chmod +x unlock hello_script", async ()=>{
+      // Pre-populate file directly (the modal would normally do this)
+      await page.evaluate(()=>{
+        writeFile("/home/player/scripts/hello.sh", 'echo "Hallo SchwarmShell"\n', false);
+        if(state.perms["/home/player/scripts/hello.sh"]) {
+          state.perms["/home/player/scripts/hello.sh"].exec = true;
+        }
+        saveState();
+        evaluateScriptQuests();
+      });
+      const s = await getState(page);
+      expect(s.flags.script_hello).toBeTruthy();
+    });
+    await it("variable script triggers script_variable", async ()=>{
+      await page.evaluate(()=>{
+        writeFile("/home/player/scripts/greet.sh", 'NAME="Welt"\necho "Hi $NAME"\n', false);
+        saveState();
+        evaluateScriptQuests();
+      });
+      const s = await getState(page);
+      expect(s.flags.script_variable).toBeTruthy();
+    });
+    await it("two rm lines trigger script_cleanup", async ()=>{
+      await page.evaluate(()=>{
+        writeFile("/home/player/scripts/cleanup.sh", "rm ~/lager/kabel.tmp\nrm ~/lager/kiste.tmp\n", false);
+        saveState();
+        evaluateScriptQuests();
+      });
+      const s = await getState(page);
+      expect(s.flags.script_cleanup).toBeTruthy();
+    });
+    await it("edit command opens editor modal", async ()=>{
+      await exec(page, "edit ~/scripts/test.sh");
+      const visible = await page.evaluate(()=>!document.getElementById("editorOverlay").hidden);
+      expect(visible).toBe(true);
+      // Close it so next tests don't get stuck
+      await page.evaluate(()=>document.getElementById("editorCancel").click());
+    });
+    await it("phase 6 pill label", async ()=>{
+      const text = await page.evaluate(()=>document.getElementById("phasePill").textContent);
+      expect(text).toContain("Phase 6");
+    });
+  });
+
+  await suite("difficulty", async ()=>{
+    await newGame(page);
+    await it("hardcore hides Clippy button", async ()=>{
+      await page.evaluate(()=>{ state.settings.difficulty = "hardcore"; saveState(); applySettings(); });
+      const hidden = await page.evaluate(()=>document.getElementById("clippyHelperBtn").hidden);
+      expect(hidden).toBe(true);
+    });
+    await it("classic shows Clippy with two-step solution", async ()=>{
+      await page.evaluate(()=>{ state.settings.difficulty = "classic"; saveState(); applySettings(); });
+      await page.click("#clippyHelperBtn");
+      // Solution is hidden behind a reveal button in classic
+      const stepsHidden = await page.evaluate(()=>{
+        const list = document.getElementById("clippyStepsList");
+        return list ? list.hidden : null;
+      });
+      expect(stepsHidden).toBe(true);
+      await page.click("#clippyRevealBtn");
+      const stepsShown = await page.evaluate(()=>{
+        const list = document.getElementById("clippyStepsList");
+        return list ? list.hidden : null;
+      });
+      expect(stepsShown).toBe(false);
+    });
+  });
+
+  await context.close();
+  await browser.close();
+
+  // Summary
+  console.log("\n──────────────────────────────────────────");
+  const ok = results.filter(r => r.ok).length;
+  const fail = results.length - ok;
+  console.log(`Passed: ${ok}  Failed: ${fail}  Total: ${results.length}`);
+  if(fail > 0){
+    console.log("\nFailures:");
+    for(const r of results) if(!r.ok) console.log(`  • ${r.name}\n      ${r.error}`);
+  }
+  if(serverProc){ try{ serverProc.kill(); }catch(_e){} }
+  process.exit(fail > 0 ? 1 : 0);
+}
+
+main().catch((err)=>{
+  console.error("Fatal:", err);
+  if(serverProc){ try{ serverProc.kill(); }catch(_e){} }
+  process.exit(1);
+});

@@ -1044,6 +1044,55 @@ function applySettings(){
         if(tt) tt.hidden = true;
       }
     }
+    // i18n: Settings-Panel-Labels aktualisieren
+    applyLocale();
+  }catch(_e){}
+}
+
+// applyLocale: schreibt die übersetzten Strings in die statischen UI-Labels.
+// Bewusst defensiv (Element-checks), weil die Seite auch im "Spieler hat alles
+// kaputt"-Modus noch laden soll.
+function applyLocale(){
+  try{
+    if(!window.t) return;
+    const set = (id, text)=>{ const el2 = el(id); if(el2) el2.textContent = text; };
+    set("settingsTitle", t("settings.title"));
+    set("settingsClose", t("settings.close"));
+    set("settingsReplayLabel", t("settings.replay"));
+    set("settingsReplayDesc", t("settings.replay.desc"));
+    set("settingsLanguageLabel", t("settings.language"));
+    set("settingsLanguageDesc", t("settings.language.desc"));
+    // Difficulty-Buttons
+    const diffLabels = {
+      story: t("settings.difficulty.story"),
+      classic: t("settings.difficulty.classic"),
+      hardcore: t("settings.difficulty.hardcore")
+    };
+    document.querySelectorAll('[data-difficulty]').forEach((btn)=>{
+      const k = btn.dataset.difficulty;
+      if(diffLabels[k]) btn.textContent = diffLabels[k];
+    });
+    // Locale-Toggles
+    document.querySelectorAll('[data-locale]').forEach((btn)=>{
+      const isActive = (state.settings && state.settings.locale) === btn.dataset.locale;
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+    // Update audio/motion toggles' text
+    const audioBtn = el("settingsAudioToggle");
+    if(audioBtn){
+      const on = !!(state.settings && state.settings.audio);
+      audioBtn.textContent = on ? t("settings.sound.on") : t("settings.sound.off");
+    }
+    const rmBtn = el("settingsReducedMotion");
+    if(rmBtn){
+      const on = !!(state.settings && state.settings.reducedMotion);
+      rmBtn.textContent = on ? t("settings.motion.on") : t("settings.motion.off");
+    }
+    // Reset-Concepts-Button
+    const resetBtn = el("settingsResetConcepts");
+    if(resetBtn) resetBtn.textContent = t("settings.concepts.reset");
+    // Phase-Pill neu schreiben (nutzt t() jetzt indirekt über renderPhasePill)
+    if(typeof renderPhasePill === "function") renderPhasePill();
   }catch(_e){}
 }
 
@@ -1192,6 +1241,65 @@ async function copyReplayToClipboard(){
 }
 
 // ============================================================================
+//  Phase-6 Skript-Editor — schreibt eigene Bash-Skripte in einem Modal
+// ============================================================================
+function openScriptEditor(path, initialContent){
+  const overlay = el("editorOverlay");
+  const ta = el("editorTextarea");
+  const pathLabel = el("editorPath");
+  if(!overlay || !ta) return;
+  ta.value = String(initialContent || "");
+  if(pathLabel) pathLabel.textContent = path;
+  overlay.dataset.editPath = path;
+  overlay.hidden = false;
+  setTimeout(()=>ta.focus(), 50);
+}
+window.openScriptEditor = openScriptEditor;
+
+function closeScriptEditor(){
+  const overlay = el("editorOverlay");
+  if(!overlay) return;
+  overlay.hidden = true;
+  delete overlay.dataset.editPath;
+}
+
+function saveScriptEditor(){
+  const overlay = el("editorOverlay");
+  const ta = el("editorTextarea");
+  if(!overlay || !ta) return;
+  const path = overlay.dataset.editPath;
+  if(!path) return;
+  const content = String(ta.value || "");
+  // writeFile ist im fs.js-Scope global verfügbar (kein type=module)
+  const result = (typeof writeFile === "function") ? writeFile(path, content, false) : { ok:false, err:"writeFile fehlt" };
+  if(!result.ok){
+    toast(`Editor: ${result.err}`, { type:"warn" });
+    return;
+  }
+  closeScriptEditor();
+  toast(`${path} gespeichert.`, { type:"success" });
+  // Phase-6-Trigger sofort prüfen, damit Spieler*innen direkt Feedback bekommen
+  if(typeof window.evaluateScriptQuests === "function") window.evaluateScriptQuests();
+  if(typeof renderObjectives === "function") renderObjectives();
+}
+
+const _editorSave = el("editorSave");
+if(_editorSave) _editorSave.addEventListener("click", saveScriptEditor);
+const _editorCancel = el("editorCancel");
+if(_editorCancel) _editorCancel.addEventListener("click", closeScriptEditor);
+// Strg/Cmd+S im Editor speichert; Esc schließt
+document.addEventListener("keydown", (e)=>{
+  const overlay = el("editorOverlay");
+  if(!overlay || overlay.hidden) return;
+  if((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")){
+    e.preventDefault();
+    saveScriptEditor();
+  } else if(e.key === "Escape"){
+    closeScriptEditor();
+  }
+});
+
+// ============================================================================
 //  Event-Wiring für all die neuen UI-Elemente
 // ============================================================================
 const _settingsBtn = el("settingsBtn");
@@ -1215,7 +1323,18 @@ document.querySelectorAll('[data-difficulty]').forEach((btn)=>{
       b.setAttribute("aria-pressed", b.dataset.difficulty === d ? "true" : "false");
     });
     applySettings();
-    toast(`Schwierigkeit: ${d === "story" ? "Story" : d === "classic" ? "Klassisch" : "Hardcore"}`, { type:"info" });
+    const labelKey = "settings.difficulty." + d;
+    toast(t("toast.difficulty", t(labelKey)), { type:"info" });
+  });
+});
+
+document.querySelectorAll('[data-locale]').forEach((btn)=>{
+  btn.addEventListener("click", ()=>{
+    const loc = btn.dataset.locale;
+    if(!["de","en"].includes(loc)) return;
+    state.settings.locale = loc;
+    saveState();
+    applySettings();
   });
 });
 
@@ -1322,6 +1441,15 @@ function commitUI(opts={}){
   }catch(e){
     return [];
   }
+}
+
+// Verwaister Aufruf aus einem alten Refactor: renderHeader() wird in commands.js
+// und fs.js noch referenziert, aber nirgends mehr definiert. Pass-through-Funktion
+// verhindert ReferenceError-Crashes — sie aktualisiert sinnvoll Header-Subtext
+// und Phase-Pill.
+function renderHeader(){
+  try{ renderHeaderSub(); }catch(_e){}
+  try{ renderPhasePill(); }catch(_e){}
 }
 
 function renderHeaderSub(){

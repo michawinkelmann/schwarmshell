@@ -21,6 +21,7 @@ Informatik-Wahlpflichtkurs oder als Selbstlern-Material.
 | 3 — Patchlord-Bossfight | Datei-Rechte (rwx-Modell), Ausführbarkeit, Output umleiten | `chmod` (+x / Oktett), `echo > / >>`, `bash`, Pipes (`|`) |
 | 4 — Mentor-Hub | Prozessmodell, Signale, Befehls-Verlauf, Effizienz | `ps`, `top`, `kill`, `kill -9/-15`, `history`, `alias` |
 | 5 — Real-Life / Arbeitsamt | Übertrag auf reale Berufsanwendungen, Audit-Logs | Kombi aus allen vorherigen Phasen |
+| 6 — Scriptlab | Eigene Bash-Skripte schreiben (echo, Variablen, mehrere Befehle), chmod +x, Ausführung | `edit <file>` öffnet einen Editor; Pattern-basierte Quest-Trigger |
 
 ## Reflexionsfragen (für Plenum oder Lerntagebuch)
 
@@ -52,6 +53,14 @@ Informatik-Wahlpflichtkurs oder als Selbstlern-Material.
 - Welche der gelernten Bash-Werkzeuge würdest du in einem nicht-IT-Beruf
   einsetzen (z.B. Snackmaster, A-R-S, Ohlendorf-Technik)?
 - Wo siehst du Grenzen der Bash gegenüber grafischen Tools?
+
+### Nach Phase 6
+- Warum schreibt man Bash-Skripte überhaupt — was wäre die Alternative
+  und wann lohnt sie sich nicht?
+- Was bedeuten Variablen wie `NAME="Welt"` und `echo "$NAME"` konkret —
+  warum braucht man die Anführungszeichen bei Strings mit Leerzeichen?
+- Was kann ein Skript gefährlich machen, das mehrere `rm` enthält? Wie
+  würdest du dich davor schützen, versehentlich Wichtiges zu löschen?
 
 ## Brücke zu echter Linux-Bash
 

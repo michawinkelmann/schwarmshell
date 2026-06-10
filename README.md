@@ -44,7 +44,9 @@ Die Scripts laden in fester Reihenfolge (siehe `index.html`) und teilen sich den
 | `js/npc-dialogs.js` | NPC-Dialog-System: Dialogbäume, `cmdTalk`/`cmdChoose` (alle Story-/Sidequest-Dialoge) |
 | `js/quests.js` | Quest-Trigger, Phasen-Fortschritt, Phase-6-Script-Engine |
 | `js/commands.js` | Befehls-Implementierungen (`cmdImpl`), Autocomplete, `runLine` |
-| `js/main.js` | UI-Verdrahtung: Eingabe, Overlays, Settings, Tutorial, Audio |
+| `js/clippy.js` | 📎-Helfer: Musterlösungen pro Quest-Key (`CLIPPY_SOLUTIONS`) + Tooltip-Logik |
+| `js/tutorial.js` | Cinematic-Intro und geführtes Tutorial (Schritte, Aufgaben, Ablauf) |
+| `js/main.js` | Boot-Flow, Savegame-Panel, Reset-Schutz, Audio, Settings, Event-Verdrahtung |
 
 ### Konventionen
 

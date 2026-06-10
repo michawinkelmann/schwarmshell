@@ -12,13 +12,25 @@
       --radius:16px;
       --top-card-height: 760px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      /* Abgeleitete Töne — bei Theme-Anpassungen hier zentral ändern */
+      --bg-deep:#0a0e13;
+      --bg-deepest:#090d12;
+      --muted2:#7f8ca3;
+      --ok-bright:#b6ffd1;
+      --ok-soft:#dfffe8;
+      --ok-strong:#3ddc84;
+      --ok-dark:#2e7d32;
+      --warn-soft:#ffe7b2;
+      --quest:#ffd77f;
+      --bad-soft:#ffd2d2;
+      --info-soft:#e0ebff;
       --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
     }
 html,body{height:100%;}
 [hidden]{ display:none !important; }
 body{
       margin:0;
-      background: linear-gradient(180deg, #0b0f14 0%, #0a0e13 55%, #090d12 100%);
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 55%, var(--bg-deepest) 100%);
       color:var(--text);
       font-family:var(--sans);
     }
@@ -181,7 +193,7 @@ body{
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), 0 8px 18px rgba(0,0,0,.2);
       font-size:12px;
       line-height:1.45;
-      color:#ffe7b2;
+      color:var(--warn-soft);
     }
     .nextQuestHint a{
       color:var(--accent);
@@ -336,7 +348,7 @@ body{
       display:inline-block;
       font-family:var(--mono);
       font-weight:700;
-      color:#b6ffd1;
+      color:var(--ok-bright);
       background:rgba(124,244,176,.14);
       border:1px solid rgba(124,244,176,.45);
       border-radius:6px;
@@ -382,10 +394,10 @@ body{
     }
     .mapLegendItem{ display:inline-flex; align-items:center; gap:3px; }
     .mapLegendDot{ font-family:var(--mono); }
-    .mapLegendCurrent{ color:#b8ffd6; }
-    .mapLegendVisited{ color:#9fb0c5; }
-    .mapLegendQuest{ color:#ffd77f; }
-    .mapLegendUnvisited{ color:#7f8ca3; }
+    .mapLegendCurrent{ color:var(--ok-bright); }
+    .mapLegendVisited{ color:var(--muted); }
+    .mapLegendQuest{ color:var(--quest); }
+    .mapLegendUnvisited{ color:var(--muted2); }
     .mapTree{
       margin:0;
       width:100%;
@@ -404,15 +416,15 @@ body{
     .mapNodeEntry{ cursor:pointer; border-radius:4px; }
     .mapNodeEntry:hover{ background:rgba(91,156,255,.14); }
     .mapCurrentEntry{
-      color:#b8ffd6;
+      color:var(--ok-bright);
       text-shadow:
         0 0 4px rgba(124,244,176,.85),
         0 0 10px rgba(124,244,176,.6),
         0 0 18px rgba(124,244,176,.35);
       font-weight:700;
     }
-    .mapQuestEntry{ color:#ffd77f; font-weight:600; }
-    .mapUnvisitedEntry{ color:#7f8ca3; }
+    .mapQuestEntry{ color:var(--quest); font-weight:600; }
+    .mapUnvisitedEntry{ color:var(--muted2); }
     @media (max-width: 1020px){
       .terminalWrap{height:auto;}
       .mapCard .content{height:auto;}
@@ -525,7 +537,7 @@ body{
     }
   
 .obj.done .dot{
-  background:#3ddc84;
+  background:var(--ok-strong);
   box-shadow:0 0 0 3px rgba(61,220,132,.25);
 }
 
@@ -554,7 +566,7 @@ body{
 .warnInline{ color: rgba(255,190,90,.95); font-weight:600; }
 
 
-    .okInline{ color:#2e7d32; font-weight:600; }
+    .okInline{ color:var(--ok-dark); font-weight:600; }
 
     .startOverlay{
       position:fixed;
@@ -618,7 +630,7 @@ body{
     }
     .cinematicIntroPanel h2{
       margin:0;
-      color:#ffd2d2;
+      color:var(--bad-soft);
       text-shadow:0 0 14px rgba(255,120,120,.24);
     }
     .cinematicIntroText{
@@ -689,7 +701,7 @@ body{
       display:inline-block;
       font-family:var(--mono);
       font-weight:700;
-      color:#b6ffd1;
+      color:var(--ok-bright);
       background:rgba(124,244,176,.14);
       border:1px solid rgba(124,244,176,.45);
       border-radius:6px;
@@ -846,15 +858,15 @@ body{
     .toast.toastSuccess{
       border-color: rgba(124,244,176,.55);
       background: linear-gradient(180deg, rgba(20,38,28,.97), rgba(15,22,32,.97));
-      color:#dfffe8;
+      color:var(--ok-soft);
     }
     .toast.toastInfo{
       border-color: rgba(91,156,255,.45);
-      color:#e0ebff;
+      color:var(--info-soft);
     }
     .toast.toastWarn{
       border-color: rgba(255,215,127,.55);
-      color:#ffe7b2;
+      color:var(--warn-soft);
     }
     .toast .toastTitle{
       display:block;
@@ -944,7 +956,7 @@ body{
     .settingsRow .btn[aria-pressed="true"]{
       border-color: rgba(124,244,176,.7);
       background: rgba(124,244,176,.16);
-      color:#dfffe8;
+      color:var(--ok-soft);
     }
 
     /* ========== Replay Overlay ========== */
@@ -1016,7 +1028,7 @@ body{
     .conceptPanel h2{
       margin:0;
       font-size:18px;
-      color:#b6ffd1;
+      color:var(--ok-bright);
     }
     .conceptPanel .conceptKicker{
       margin:0;
@@ -1034,7 +1046,7 @@ body{
       padding:10px 12px;
       font-family: var(--mono);
       font-size:13px;
-      color:#dfffe8;
+      color:var(--ok-soft);
       white-space: pre-wrap;
     }
     .conceptPanel .conceptHint{ font-size:12px; color: var(--muted); }
@@ -1064,7 +1076,7 @@ body{
       flex-direction:column;
       gap:10px;
     }
-    .editorPanel h2{ margin:0; color:#b6ffd1; }
+    .editorPanel h2{ margin:0; color:var(--ok-bright); }
     .editorPanel textarea{
       width:100%;
       min-height:240px;
@@ -1072,7 +1084,7 @@ body{
       border-radius:12px;
       padding:10px 12px;
       background: rgba(0,0,0,.32);
-      color:#dfffe8;
+      color:var(--ok-soft);
       font-family: var(--mono);
       font-size:14px;
       line-height:1.5;
@@ -1090,5 +1102,5 @@ body{
       line-height:1.5;
       margin:0 0 10px 0;
     }
-    .clippyHintBlock strong{ color:#b6ffd1; }
+    .clippyHintBlock strong{ color:var(--ok-bright); }
     .clippySteps[hidden]{ display:none; }

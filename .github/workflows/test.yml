@@ -1,0 +1,21 @@
+# CI: führt die Playwright-E2E-Tests (test/playthrough.test.mjs) bei jedem
+# Push und Pull Request aus. Der Test startet den HTTP-Server selbst
+# (python3 -m http.server, auf ubuntu-latest vorinstalliert).
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test

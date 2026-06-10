@@ -1,4 +1,10 @@
 // fs.js — virtual filesystem helpers
+//
+// Fehlerformat-Konvention (siehe auch commands.js):
+//   FS-Helfer geben { ok:false, err:"<präfixfreier Grund>" } zurück,
+//   z.B. err:"Permission denied" — OHNE Befehlsnamen davor.
+//   Die Befehls-Implementierungen in commands.js bauen daraus die
+//   Nutzermeldung: { ok:false, out:`cp: ${r.err}` }.
   function normPath(p){
     if(!p) return state.cwd;
     if(p.startsWith("~")) p = p.replace(/^~/, "/home/player");
@@ -116,7 +122,7 @@
       dPath = dPath.replace(/\/$/,"") + "/" + sPath.split("/").pop();
     }
     const sn = getNode(sPath);
-    if(!sn || sn.type!=="file") return { ok:false, err:"cp: source not a file" };
+    if(!sn || sn.type!=="file") return { ok:false, err:"source is not a file" };
     const w = writeFile(dPath, sn.content, false);
     if(w.ok){
       const sp = ensurePerm(sPath);
@@ -129,9 +135,9 @@
     const sPath = normPath(src);
     const dPath = normPath(dst);
     const sn = getNode(sPath);
-    if(!sn) return { ok:false, err:"mv: source missing" };
+    if(!sn) return { ok:false, err:"source missing" };
     if(!writable(sPath) || !writable(dPath)) return { ok:false, err:"Permission denied (nur unter ~ erlaubt)" };
-    if(sn.type!=="file") return { ok:false, err:"mv: only files supported" };
+    if(sn.type!=="file") return { ok:false, err:"only files supported" };
     const w = writeFile(dPath, sn.content, false);
     if(!w.ok) return w;
     state.perms[dPath] = structuredClone(ensurePerm(sPath));
@@ -147,7 +153,7 @@
   function findPaths(start, pattern){
     const root = normPath(start);
     const startNode = getNode(root);
-    if(!startNode || startNode.type!=="dir") return { ok:false, err:"find: start path not a directory" };
+    if(!startNode || startNode.type!=="dir") return { ok:false, err:"start path not a directory" };
 
     const out = [];
     const stack = [root];

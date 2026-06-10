@@ -5,6 +5,9 @@
   const promptEl = el("prompt");
   let lastInputRow = null;
   let lastOutputRow = null;
+  // Bewusst de-DE: now() landet nur in Spielinhalten (Savegame-Zeitstempel wie
+  // state.startedAt) — und Spielinhalte bleiben Deutsch, auch wenn die UI auf
+  // Englisch steht (siehe i18n.js).
   const now = ()=>new Date().toLocaleString("de-DE");
   const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
 

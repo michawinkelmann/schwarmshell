@@ -913,7 +913,7 @@ cmdInput.addEventListener("keydown", (e)=>{
     }
 
     if(candidates.length > 1){
-      if(tabState.source === cmdInput.value && tabState.candidates.join(" ") === candidates.join(" ")){
+      if(tabState.source === cmdInput.value && tabState.candidates.join("\x00") === candidates.join("\x00")){
         tabState.index = (tabState.index + 1) % candidates.length;
       }else{
         tabState.source = cmdInput.value;

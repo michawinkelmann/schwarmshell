@@ -8,7 +8,9 @@
   const FS = window.SCHWARM_FS;
   const NPCS = window.SCHWARM_NPCS;
   if(!FS || !NPCS){
-    console.error("[SchwarmShell] data.js: window.SCHWARM_FS oder window.SCHWARM_NPCS fehlt. Lade-Reihenfolge in index.html prüfen.");
+    const msg = "data.js: window.SCHWARM_FS oder window.SCHWARM_NPCS fehlt. Lade-Reihenfolge in index.html prüfen.";
+    if(window.schwarmBootError) window.schwarmBootError(msg);
+    else console.error("[SchwarmShell] " + msg);
     return;
   }
 

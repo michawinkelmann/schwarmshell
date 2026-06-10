@@ -5,16 +5,50 @@
 // State-Bedingungen (Flags, Quest-Done, Phase) nach jedem Schritt.
 //
 // Ausführen:
-//   node test/playthrough.test.mjs
-//   PLAYWRIGHT_HEADED=1 node test/playthrough.test.mjs   # Browser sichtbar
+//   npm install            # einmalig (lädt Playwright)
+//   npm test               # oder: node test/playthrough.test.mjs
+//   npm run test:headed    # Browser sichtbar
 //
-// Voraussetzung: Lokal läuft "python3 -m http.server 8765" im Repo-Root.
+// Der HTTP-Server (python3 -m http.server 8765) wird automatisch gestartet,
+// falls er nicht schon läuft.
 
-import { chromium } from "/opt/node22/lib/node_modules/playwright/index.mjs";
 import http from "node:http";
+import fs from "node:fs";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+
+// Playwright-Auflösung: zuerst regulär über node_modules (npm install / CI),
+// dann Overrides/bekannte globale Pfade — so läuft der Test sowohl nach einem
+// normalen `npm install` als auch in Umgebungen mit global installiertem Playwright.
+async function loadChromium(){
+  const candidates = [
+    "playwright",
+    process.env.PLAYWRIGHT_MODULE,
+    "/opt/node22/lib/node_modules/playwright/index.mjs"
+  ].filter(Boolean);
+  for(const spec of candidates){
+    try{
+      const pw = await import(spec);
+      if(pw && pw.chromium) return pw.chromium;
+    }catch(_e){ /* nächsten Kandidaten probieren */ }
+  }
+  throw new Error("Playwright nicht gefunden. `npm install` ausführen oder PLAYWRIGHT_MODULE auf das Playwright-Modul zeigen lassen.");
+}
+const chromium = await loadChromium();
+
+// Chromium-Binary: Wenn keiner der bekannten Pfade existiert, entscheidet
+// Playwright selbst (nutzt die per `npx playwright install chromium` geladenen Browser).
+function chromiumExecutablePath(){
+  const candidates = [
+    process.env.PLAYWRIGHT_CHROMIUM,
+    "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+  ].filter(Boolean);
+  for(const p of candidates){
+    try{ if(fs.existsSync(p)) return p; }catch(_e){}
+  }
+  return undefined;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -138,7 +172,7 @@ async function main(){
   await ensureServer();
   const browser = await chromium.launch({
     headless: !HEADED,
-    executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+    executablePath: chromiumExecutablePath(),
     args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -460,6 +494,42 @@ async function main(){
     await it("phase 6 pill label", async ()=>{
       const text = await page.evaluate(()=>document.getElementById("phasePill").textContent);
       expect(text).toContain("Phase 6");
+    });
+  });
+
+  await suite("winkelmann sidequest", async ()=>{
+    await newGame(page);
+    await it("entering the hidden lab unlocks the sidequest", async ()=>{
+      await exec(page, "cd /school/keller/winkelmann_lab");
+      const s = await getState(page);
+      expect(s.sidequest.found_lab).toBe(true);
+    });
+    await it("talk winkelmann opens the topic menu", async ()=>{
+      await exec(page, "talk winkelmann");
+      const s = await getState(page);
+      expect(s.sidequest.unlocked).toBe(true);
+      expect(s.sidequest.dialog).toBe("winkelmann");
+      expect(await getTerminalText(page)).toContain("Wähle ein Thema");
+    });
+    await it("reacts to hot logs on one host", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = { gym:true }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("Ich rieche heiße Logs");
+    });
+    await it("reacts to hot logs on both hosts", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = { gym:true, igs:true }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("beide Logs brennen");
+    });
+    await it("warns when the trace meter is nearly full", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = {}; state.sidequest.traceMeter = { gym: 80, igs: 0 }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("Trace‑Leiste ist fast voll");
+    });
+    await it("choose 4 shows the status submenu", async ()=>{
+      await exec(page, "choose 4");
+      const text = await getTerminalText(page);
+      expect(text).toContain("Winkelmann");
     });
   });
 

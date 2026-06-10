@@ -680,7 +680,7 @@ Tipp: quests zeigt dir die Quest-Keys in [eckigen Klammern].` };
         }
         lines.push("");
         lines.push("Quest-Hilfe: help - <questkey>  (z.B. help - frag3)");
-        // Hinweis: Pipes sind im Spiel nicht aktiv (bewusst vereinfacht).
+        // Pipes sind aktiv (max. 2 Verkettungen, siehe runLine) — Limit steht im BEGLEITMATERIAL.
         if(state.phase===3) lines.push("Boss-Run: find → grep -n → cp → echo >> → chmod +x → ./patchlord.sh ...");
         if(state.phase===4) lines.push("Mentor-Arc: ps/top/kill · history · alias · mentor_clear");
         lines.push("");

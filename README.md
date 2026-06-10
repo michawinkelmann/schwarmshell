@@ -55,7 +55,7 @@ Die Scripts laden in fester Reihenfolge (siehe `index.html`) und teilen sich den
 
 ## Inhalte erweitern
 
-- **Quest-Ziel hinzufügen:** `OBJECTIVES` in `js/data.js` — Eintrag mit `phase`, `title`, `hint` und einer `done(state)`-Funktion. Der zugehörige Flag wird von einem Befehl/Trigger in `js/commands.js` gesetzt.
+- **Quest-Ziel hinzufügen:** `OBJECTIVES` in `js/data.js` — Eintrag mit `phase`, `title`, `key`, `hint` und einer `done(state)`-Funktion. Der `key` ist der kanonische Quest-Schlüssel (siehe `objectiveKey()` in `js/quests.js`): Er adressiert die Quest in `help - <key>`, in den Clippy-Lösungen (`CLIPPY_SOLUTIONS`, `js/main.js`) und auf der Ordnerkarte (`QUEST_PATH_BY_KEY`, `js/fs.js`). Der zugehörige Flag wird von einem Befehl/Trigger in `js/commands.js` gesetzt.
 - **Ort/Datei hinzufügen:** `js/data/fs.js` — Pfad als Key, `{ type:"dir"|"file", children|content }`. Ortsbeschreibungen (`LOC`) liegen ebenfalls dort.
 - **NPC hinzufügen:** `js/data/npcs.js` — `id`, `name`, `role`, `at:[Pfade]`. Generische NPCs bekommen automatisch Mehrstufen-Dialoge; Spezial-Dialoge leben in `case "talk"` in `js/commands.js`.
 - **Befehl hinzufügen:** Eintrag in `COMMAND_REGISTRY` (+ ausführliche man-Page in `MANUALS`) in `js/manpages.js` und ein `case` in `cmdImpl()` in `js/commands.js`. Ggf. in `allowedCommands()` für die Phase freischalten.

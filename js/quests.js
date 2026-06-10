@@ -4,6 +4,16 @@
 // wenn Quest-Bedingungen (OBJECTIVES in js/data.js) erfüllt sind.
 // evaluateScriptQuests/runScript: Phase-6-Scriptlab — Pattern-Checks und die
 // bewusst vereinfachte Ausführung eigener Skripte. applyCheat1337: Dev-Cheat.
+
+// objectiveKey — kanonischer Quest-Key eines Objectives. Wird überall benutzt,
+// wo Quests adressiert werden: "help - <key>", Clippy-Lösungen (CLIPPY_SOLUTIONS
+// in main.js) und Karten-Pfade (QUEST_PATH_BY_KEY in fs.js). Alle OBJECTIVES in
+// js/data.js tragen ein explizites key-Feld; "quest" ist nur der Fallback für
+// selbst ergänzte Objectives ohne key.
+function objectiveKey(objective){
+  return (objective && objective.key) ? String(objective.key).trim().toLowerCase() : "quest";
+}
+
   function grepTrigger(pattern, outText){
     // FRAG1 quest: accept both the exact tag and broader searches like TOKEN/token.
     // We only mark progress when the output looks like it comes from frag_1.log context.

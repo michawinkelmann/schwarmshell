@@ -105,29 +105,6 @@ const CLIPPY_SOLUTIONS = {
   jobangebot: { subtitle:"Finales Jobangebot einsammeln.", steps:[ 'Prüfe, dass alle fünf Firmenquests auf ✅ stehen: <code>quests</code>.', 'Geh zurück ins Arbeitsamt: <code>cd /arbeitsamt</code>.', 'Triggere den Abschluss beim NPC: <code>talk beamter</code>.', 'Lies das Ergebnis: <code>cat /arbeitsamt/jobangebot.txt</code> und bestätige mit <code>quests</code>.' ], hint:'Erklärung: Das Jobangebot wird erst erzeugt, wenn SNACKMASTER, ARS, Ohlendorf, Berndt und CMS erledigt sind.' }
 };
 
-function objectiveKeyFromTitle(title){
-  const t = String(title||"").toLowerCase();
-  if(t.includes("tutorial")) return "tutorial";
-  if(t.includes("iserv")) return "iserv";
-  if(t.includes("keycard")) return "keycard";
-  if(t.includes("server-gate")) return "gate";
-  if(t.includes("fragment #1")) return "frag1";
-  if(t.includes("fragment #2")) return "frag2";
-  if(t.includes("fragment #3")) return "frag3";
-  if(t.includes("reality")) return "assemble";
-  if(t.includes("patchlord lokalisieren")) return "locate";
-  if(t.includes("bug")) return "bug";
-  if(t.includes("hotfix")) return "hotfix";
-  if(t.includes("ausführbar")) return "chmod";
-  if(t.includes("bossfight")) return "boss";
-  if(t.includes("mentor hub betreten")) return "mentor_hub";
-  if(t.includes("history-detective")) return "emma";
-  if(t.includes("qol-shortcut")) return "leo";
-  if(t.includes("mentor-run clear")) return "mentor_clear";
-  if(t.includes("finales zeugnis")) return "report_final";
-  return "quest";
-}
-
 function getCurrentMainObjective(){
   const list = OBJECTIVES.filter((o)=>o.phase===state.phase);
   return list.find((o)=>!o.done(state)) || null;
@@ -195,7 +172,7 @@ function renderClippyAvailability(){
 function buildClippyContent(){
   const current = getCurrentMainObjective();
   if(!current) return null;
-  const key = current.key || objectiveKeyFromTitle(current.title);
+  const key = objectiveKey(current);
   const template = CLIPPY_SOLUTIONS[key] || {
     subtitle:"Für diese Quest gibt es aktuell eine allgemeine Musterstrategie.",
     steps:[
@@ -418,15 +395,6 @@ function placeBubbleAt(targetEl, opts={}){
   const left = Math.min(window.innerWidth - bubble.offsetWidth - 12, Math.max(12, rect.right + 12));
   bubble.style.top = `${top}px`;
   bubble.style.left = `${left}px`;
-}
-
-function escapeHtml(value){
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 function formatTutorialText(text){

@@ -597,6 +597,50 @@ function allowedCommands(){
             "  cd /arbeitsamt",
             "  talk beamter",
             "Wenn was fehlt: quests zeigt dir, welche Firma noch offen ist."
+          ],
+          "mentor_hub": [
+            "Mentor Hub – Ankommen",
+            "Du bist in der Lobby. Erst Überblick, dann Quests.",
+            "Beispiele:",
+            "  ls",
+            "  cat quests.txt",
+            "  talk noah   (oder emma / leo)",
+            "Die Squad-Quests kannst du in beliebiger Reihenfolge machen."
+          ],
+          "report_final": [
+            "Finales Zeugnis – Bonus einsammeln",
+            "Für das finale Zeugnis brauchst du Bonus Points aus der versteckten Sidequest.",
+            "Grobe Richtung (ohne Spoiler): Unter der Schule gibt es mehr als Lagerräume…",
+            "Danach: zurück ins Sekretariat (talk harries oder talk pietsch)."
+          ],
+          "scriptlab": [
+            "Scriptlab – Einstieg (Phase 6)",
+            "Jetzt schreibst du eigene Skripte. Erst lesen, dann loslegen:",
+            "  cd /scriptlab",
+            "  cat README.txt",
+            "  cat auftraege.txt"
+          ],
+          "hello_script": [
+            "Hello-World-Skript",
+            "Workflow: Datei anlegen → Inhalt schreiben → ausführbar machen.",
+            "Beispiele:",
+            "  edit ~/scripts/hello.sh        (Inhalt: echo \"Hallo SchwarmShell\")",
+            "  chmod +x ~/scripts/hello.sh",
+            "Die Quest zählt, sobald die Datei das echo enthält UND ausführbar ist."
+          ],
+          "var_script": [
+            "Skript mit Variable",
+            "Eine Variable setzen und mit $ wieder ausgeben:",
+            "  edit ~/scripts/greet.sh",
+            "  Inhalt z.B.:  NAME=\"Welt\"  und  echo \"Hi $NAME\"",
+            "Trigger: Zuweisung (NAME=...) plus ein echo mit $."
+          ],
+          "cleanup_script": [
+            "Cleanup-Skript",
+            "Ein Skript, das aufräumt — mindestens zwei rm-Zeilen.",
+            "  edit ~/scripts/cleanup.sh",
+            "  Inhalt z.B.:  rm ~/lager/alt1.tmp  und  rm ~/lager/alt2.tmp",
+            "Trigger: zwei oder mehr Zeilen, die mit \"rm \" beginnen."
           ]
         };
 
@@ -613,11 +657,12 @@ function allowedCommands(){
   help - assemble
   help - iserv
   help - find | locate | bug | fix | hotfix | chmod | boss
-  help - report
-  help - noah | emma | leo | mentor_clear
+  help - report | report_final
+  help - mentor_hub | noah | emma | leo | mentor_clear
   help - arbeitsamt | beamter
   help - snackmaster | ars | ohlendorf | berndt | cms
   help - jobangebot
+  help - scriptlab | hello_script | var_script | cleanup_script
 
 Tipp: quests zeigt dir die Quest-Keys in [eckigen Klammern].` };
           }
@@ -649,33 +694,7 @@ Tipp: quests zeigt dir die Quest-Keys in [eckigen Klammern].` };
         const next = list.find(o=>!o.done(state)) || null;
         if(!next) return { ok:true, out:"hint: In dieser Phase ist gerade nichts offen. 🎉 (quests zeigt alles)" };
 
-        const keyFor = (title)=>{
-          const t = String(title||"").toLowerCase();
-          if(t.includes("tutorial")) return "tutorial";
-          if(t.includes("keycard")) return "keycard";
-          if(t.includes("server-gate")) return "gate";
-          if(t.includes("fragment #1")) return "frag1";
-          if(t.includes("fragment #2")) return "frag2";
-          if(t.includes("fragment #3")) return "frag3";
-          if(t.includes("reality")) return "assemble";
-          if(t.includes("patchlord finden")) return "find";
-          if(t.includes("bug")) return "bug";
-          if(t.includes("script fixen") || t.includes("fixen")) return "fix";
-          if(t.includes("ausführbar")) return "chmod";
-          if(t.includes("bossfight")) return "boss";
-          if(t.includes("noah")) return "noah";
-          if(t.includes("emma")) return "emma";
-          if(t.includes("leo")) return "leo";
-          if(t.includes("mentor-run") || t.includes("squad geholfen")) return "mentor_clear";
-
-if(t.includes("iserv-glitch")) return "iserv";
-if(t.includes("patchlord lokalisieren")) return "locate";
-if(t.includes("hotfix vorbereiten")) return "hotfix";
-if(t.includes("zeugnis abholen")) return "report";
-          return "quest";
-        };
-
-        const key = (next.key || keyFor(next.title));
+        const key = objectiveKey(next);
         const msg = [
           `Tipp zur aktuellen Quest: ${next.hint}`,
           `Mehr Hilfe: help - ${key}`

@@ -677,6 +677,15 @@ async function main(){
       await exec(page, "cat readme.txt | grep a | grep b | grep c");
       expect(await getTerminalText(page)).toContain("Pipe-Limit");
     });
+    await it("help - works for every objective key (incl. phase 6)", async ()=>{
+      // hint verweist auf "help - <key>" — jeder OBJECTIVES-Key braucht einen questHelp-Eintrag
+      for(const key of ["mentor_hub", "report_final", "scriptlab", "hello_script", "var_script", "cleanup_script"]){
+        await exec(page, `help - ${key}`);
+      }
+      const term = await getTerminalText(page);
+      expect(term).toContain("Hello-World-Skript");
+      if(term.includes("Keine Quest-Hilfe")) throw new Error("missing questHelp entry: " + term.split("\n").filter(l=>l.includes("Keine Quest-Hilfe")).join(" | "));
+    });
     await it("inventory works with unlocked sidequest (regression: lines crash)", async ()=>{
       await page.evaluate(()=>{ state.sidequest.unlocked = true; saveState(); });
       await exec(page, "inventory");

@@ -164,7 +164,7 @@
     <path d="M90 610 L520 610" stroke-width="3" opacity="0.35"/>
   </g>
   <g opacity="0.55" fill="#9fb0c5" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas" font-size="18">
-    <text x="90" y="655">SchwarmShell • Offline • Phasen 1–3</text>
+    <text x="90" y="655">SchwarmShell • Offline</text>
   </g>
 </svg>`;
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);

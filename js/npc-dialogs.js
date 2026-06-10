@@ -314,6 +314,15 @@
     return pickRandom([roomLine, subjectLine]);
   }
 
+  // Erreichbarkeit (Stand: E2E-getestet):
+  //   - Klassenraum-Schüler*innen und Lehrkräfte werden in cmdTalk von früheren
+  //     Zweigen (Flavor-Lines + Gerüchte bzw. Fach-Pools) abgefangen — sie sehen
+  //     diesen Baum nicht.
+  //   - Der "student"-Baum öffnet sich für generische Schüler-NPCs außerhalb der
+  //     Klassenräume ohne eigenen Branch (z.B. nagel im SV-Büro).
+  //   - Der "teacher"-Zweig unten ist derzeit NICHT verdrahtet: cmdTalk schließt
+  //     Lehrkräfte vor dem Baum-Zweig aus (isTeacherNpc-Gate). Wer Lehrkräften
+  //     Mehrstufen-Dialoge geben will, muss dieses Gate in cmdTalk lockern.
   function buildNpcDialogTree(npcId, npc){
     const shortName = String((npc && npc.name) || npcId || "NPC").split(" ")[0];
     const teacherName = getTeacherDialogName(npc);

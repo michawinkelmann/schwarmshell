@@ -725,6 +725,71 @@ async function main(){
     });
   });
 
+  await suite("npc dialog trees", async ()=>{
+    await newGame(page);
+    await it("classroom students give quick flavor lines (no tree)", async ()=>{
+      await execMany(page, ["cd /school/klassenraume/7H1", "talk aylin"]);
+      const s = await getState(page);
+      expect(!!(s.npcDialog && s.npcDialog.active)).toBe(false);
+      expect(await getTerminalText(page)).toContain("Aylin");
+    });
+    await it("classroom teachers answer with subject flavor (no tree)", async ()=>{
+      await exec(page, "talk ommen");
+      const s = await getState(page);
+      expect(!!(s.npcDialog && s.npcDialog.active)).toBe(false);
+      expect(await getTerminalText(page)).toContain("Ommen");
+    });
+    await it("students outside classrooms open a multi-step dialog tree", async ()=>{
+      // nagel (Lara, SV) ist ein generischer NPC ohne eigenen Sidequest-Branch
+      await execMany(page, ["cd /school/sv_buero", "talk nagel"]);
+      const s = await getState(page);
+      expect(s.npcDialog && s.npcDialog.active).toBe(true);
+      const term = await getTerminalText(page);
+      expect(term).toContain("(1)");
+      expect(term).toContain("choose");
+    });
+    await it("choose 1 answers and keeps the dialog open", async ()=>{
+      await exec(page, "choose 1");
+      const s = await getState(page);
+      expect(s.npcDialog && s.npcDialog.active).toBe(true);
+    });
+    await it("choose 0 ends the conversation", async ()=>{
+      await exec(page, "choose 0");
+      const s = await getState(page);
+      expect(!!(s.npcDialog && s.npcDialog.active)).toBe(false);
+    });
+  });
+
+  await suite("edit modal", async ()=>{
+    await newGame(page);
+    await page.evaluate(()=>{ state.phase = 6; state.flags.job_arc_done = true; saveState(); });
+    await it("edit opens the editor modal", async ()=>{
+      await exec(page, "edit ~/scripts/test.sh");
+      const hidden = await page.evaluate(()=>document.getElementById("editorOverlay").hidden);
+      expect(hidden).toBe(false);
+    });
+    await it("saving writes the file and closes the modal", async ()=>{
+      await page.fill("#editorTextarea", 'echo "aus dem Editor"');
+      await page.click("#editorSave");
+      const content = await page.evaluate(()=>{
+        const f = FS["/home/player/scripts/test.sh"];
+        return f ? f.content : null;
+      });
+      expect(content).toContain("aus dem Editor");
+      const hidden = await page.evaluate(()=>document.getElementById("editorOverlay").hidden);
+      expect(hidden).toBe(true);
+    });
+    await it("escape closes without saving", async ()=>{
+      await exec(page, "edit ~/scripts/test.sh");
+      await page.fill("#editorTextarea", "verworfen");
+      await page.keyboard.press("Escape");
+      const content = await page.evaluate(()=>FS["/home/player/scripts/test.sh"].content);
+      expect(content).toContain("aus dem Editor");
+      const hidden = await page.evaluate(()=>document.getElementById("editorOverlay").hidden);
+      expect(hidden).toBe(true);
+    });
+  });
+
   await suite("difficulty", async ()=>{
     await newGame(page);
     await it("hardcore hides Clippy button", async ()=>{

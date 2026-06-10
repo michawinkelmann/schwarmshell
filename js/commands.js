@@ -1,4 +1,10 @@
 // commands.js — command registry + implementation
+//
+// Fehlerformat-Konvention (siehe auch fs.js):
+//   Befehls-Implementierungen (cmdImpl-Cases) geben IMMER { ok, out } zurück —
+//   `out` ist das, was im Terminal landet, auch im Fehlerfall (mit Befehls-Präfix,
+//   z.B. out:"cat: foo.txt: No such file"). Das Feld `err` ist der FS-/Parser-Schicht
+//   vorbehalten (präfixfreier Grund) und wird hier in `out` übersetzt.
 const COMMAND_REGISTRY = {
   "alias": { group: "Core", desc: "Alias setzen", usage: "alias ll=\"ls -l\"", example: "alias ll=\"ls -l\"" },
   "assemble": { group: "Mentor", desc: "(Mentor) Assembly-Aufgabe", usage: "assemble", example: "assemble" },
@@ -1966,7 +1972,7 @@ case "man":{
               state.processes.push({ pid: 909, name: "cnc_sim", cpu: 96, mem: 256 });
             }
           }
-        }catch(e){}
+        }catch(e){ console.warn("[SchwarmShell] Quest-Trigger fehlgeschlagen:", e); }
         saveState();
         promptEl.textContent = promptText();
         renderLocation();
@@ -2022,7 +2028,7 @@ case "man":{
               state.jobArc.quests.ohlendorf = true;
             }
           }
-        }catch(e){}
+        }catch(e){ console.warn("[SchwarmShell] Quest-Trigger fehlgeschlagen:", e); }
         saveState();
         renderObjectives();
         progressPhaseIfReady();
@@ -2039,64 +2045,7 @@ case "man":{
         return { ok:true, out:"" };
       }
 
-      
-        // Winkelmann (Physik-Zaubermeister) — Menüdialog
-        if(id === "winkelmann"){
-          state.sidequest.unlocked = true;
-          state.sidequest.stage = Math.max(state.sidequest.stage, 1);
-          state.sidequest.dialog = "winkelmann";
-          // Teile gelten als "abgegeben", wenn sie in der Workbench liegen.
-          state.sidequest.parts = state.sidequest.parts || {};
-          if(getNode("/home/player/workbench/photon_linse.part")) state.sidequest.parts.lens = true;
-          if(getNode("/home/player/workbench/gyro_spule.part")) state.sidequest.parts.coil = true;
-          if(getNode("/home/player/workbench/usv_modul.part")) state.sidequest.parts.ups = true;
-
-          const p = state.sidequest.parts||{};
-          const d = state.sidequest.net||{};
-          const t = state.sidequest.traces||{};
-          const clean = !t.gym && !t.igs;
-
-          out += "🧙‍♂️ Herr Dr. Winkelmann — „Lehrling… du bist gekommen.“\n";
-          out += "„Physik ist eine Sprache, um Chaos zu bändigen.“\n";
-          out += "„Und heute bändigen wir: Eindringlinge aus fremden Netzen.“\n\n";
-          // Reaktionen (vergessene Artefakte / Logs)
-          const misplacedBlueprint = Object.keys(FS).some(pth=>pth.startsWith("/home/player/") && pth.endsWith("/blueprint.dat") && !pth.startsWith("/home/player/workbench/"));
-          const misplacedShield = Object.keys(FS).some(pth=>pth.startsWith("/home/player/") && pth.endsWith("/shield.key") && !pth.startsWith("/home/player/workbench/"));
-
-          if((t.gym || t.igs) && !(t.gym && t.igs)){
-            out += "„Ich rieche heiße Logs… du warst irgendwo drin. Wisch deine Spuren, Lehrling.“\\n";
-          }
-          if((t.gym || t.igs) && (t.gym && t.igs)){
-            out += "„Bro… beide Logs brennen. Das ist kein Stealth, das ist ein Feuerwerk. logwipe.“\\n";
-          }
-          if((n.blueprint && !n.shield) || (n.shield && !n.blueprint)){
-            out += "„Halbe Artefakt‑Sammlung ist wie halber Taschenrechner: bringt dich nicht durch.“\\n";
-          }
-          if(misplacedBlueprint || misplacedShield){
-            out += "„Und noch was: Artefakte gehören in DEINE Workbench. Nicht irgendwohin. ~/workbench/.“\\n";
-          }
-          const tm = state.sidequest.traceMeter || {gym:0,igs:0};
-          if(tm.gym >= 70 || tm.igs >= 70){
-            out += "„Die Trace‑Leiste ist fast voll… noch ein Move und das Netz schreit. logwipe. Jetzt.“\n";
-          }
-          if((n.blueprint && n.shield) && (t.gym || t.igs)){
-            out += "„Daten hast du — aber die Logs sind noch heiß. Ohne saubere Spuren kein Ritual.“\\n";
-          }
-
-
-          out += "Wähle ein Thema:\n";
-          out += "  (1) Was ist die Maschine?\n";
-          out += "  (2) Welche Bauteile fehlen?  (Hinweis: lege gefundene Teile in ~/workbench/)\n";
-          out += "  (3) Netzwerk‑Mission (Hacknet‑Style)\n";
-          out += "  (4) Status / was fehlt mir noch?\n";
-          out += "  (5) Wie benutze ich den SUPER‑PC?\n";
-          out += "  (6) Ritual: Maschine reparieren\n\n";
-          out += "Eingabe: choose <nummer>   (z.B. choose 3)\n\n";
-          out += `Kurzstatus: Teile ${(p.lens&&p.coil&&p.ups)?"✅":"⏳"}  Daten ${(d.blueprint&&d.shield)?"✅":"⏳"}  Spuren ${clean?"🟢":"🔴"}`;
-          saveState();
-          return { ok:true, out };
-        }
-case "talk":{
+      case "talk":{
         const raw = (args.join(" ")||"").trim();
         if(!raw) return { ok:false, out:"talk: missing npc name (z.B. talk remmers)" };
 
@@ -2260,6 +2209,33 @@ const maybeAppendRumor = () => {
           out += "🧙‍♂️ Herr Dr. Winkelmann — „Lehrling… du bist gekommen.“\n";
           out += "„Physik ist eine Sprache, um Chaos zu bändigen.“\n";
           out += "„Und heute bändigen wir: Eindringlinge aus fremden Netzen.“\n\n";
+
+          // Reaktionen auf den Spielzustand: heiße Logs, halbe Artefakt-Sammlung,
+          // falsch abgelegte Artefakte, fast volle Trace-Leiste.
+          const misplacedBlueprint = Object.keys(FS).some(pth=>pth.startsWith("/home/player/") && pth.endsWith("/blueprint.dat") && !pth.startsWith("/home/player/workbench/"));
+          const misplacedShield = Object.keys(FS).some(pth=>pth.startsWith("/home/player/") && pth.endsWith("/shield.key") && !pth.startsWith("/home/player/workbench/"));
+          const tm = state.sidequest.traceMeter || {gym:0,igs:0};
+          const reactions = [];
+          if((t.gym || t.igs) && !(t.gym && t.igs)){
+            reactions.push("„Ich rieche heiße Logs… du warst irgendwo drin. Wisch deine Spuren, Lehrling.“");
+          }
+          if(t.gym && t.igs){
+            reactions.push("„Bro… beide Logs brennen. Das ist kein Stealth, das ist ein Feuerwerk. logwipe.“");
+          }
+          if((d.blueprint && !d.shield) || (d.shield && !d.blueprint)){
+            reactions.push("„Halbe Artefakt‑Sammlung ist wie halber Taschenrechner: bringt dich nicht durch.“");
+          }
+          if(misplacedBlueprint || misplacedShield){
+            reactions.push("„Und noch was: Artefakte gehören in DEINE Workbench. Nicht irgendwohin. ~/workbench/.“");
+          }
+          if(tm.gym >= 70 || tm.igs >= 70){
+            reactions.push("„Die Trace‑Leiste ist fast voll… noch ein Move und das Netz schreit. logwipe. Jetzt.“");
+          }
+          if((d.blueprint && d.shield) && (t.gym || t.igs)){
+            reactions.push("„Daten hast du — aber die Logs sind noch heiß. Ohne saubere Spuren kein Ritual.“");
+          }
+          if(reactions.length) out += reactions.join("\n") + "\n\n";
+
           out += "Wähle ein Thema:\n";
           out += "  (1) Was ist die Maschine?\n";
           out += "  (2) Welche Bauteile fehlen?  (Hinweis: in ~/workbench/ ablegen)\n";
@@ -2358,7 +2334,7 @@ const maybeAppendRumor = () => {
                 }
               }
             }
-          }catch(e){}
+          }catch(e){ console.warn("[SchwarmShell] Quest-Trigger fehlgeschlagen:", e); }
           // Accept if player placed the plan either in ~/workbench/ars/ OR directly in ~/workbench/
           try{
             const p1 = "/home/player/workbench/abholplan_2026.csv";
@@ -2371,7 +2347,7 @@ const maybeAppendRumor = () => {
                 state.jobArc.quests.ars = true;
               }
             }
-          }catch(e){}
+          }catch(e){ console.warn("[SchwarmShell] Quest-Trigger fehlgeschlagen:", e); }
           if(q.snackmaster){
             out += `„Etikett stimmt. Allergene sind drin. Du hast uns grad ... gerettet."\n\n`;
             out += `„Sag dem Beamten, er soll aufhören zu gähnen."`;
@@ -3537,7 +3513,7 @@ const outText = (extra + open).trim();
         const f = parseFind(args);
         if(f.err) return { ok:false, out:f.err };
         const r = findPaths(f.start, f.pattern);
-        if(!r.ok) return { ok:false, out:r.err };
+        if(!r.ok) return { ok:false, out:`find: ${r.err}` };
         const out = r.out.join("\n");
         if(out.includes("/boss/patchlord.sh")) state.flags.found_boss = true;
         saveState();

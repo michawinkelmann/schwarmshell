@@ -191,6 +191,13 @@
   }
   let state = loadState();
 
+  // Boot-Guard: Ohne SCHWARM_DATA (data.js fehlgeschlagen oder falsche Script-Reihenfolge)
+  // würde das Destructuring unten hart crashen — mit leerer Seite und ohne Hinweis.
+  // Stattdessen sichtbare Meldung anzeigen und mit klarer Fehlermeldung abbrechen.
+  if(!window.SCHWARM_DATA){
+    if(window.schwarmBootError) window.schwarmBootError("window.SCHWARM_DATA fehlt — data.js wurde nicht (korrekt) geladen.");
+    throw new Error("SchwarmShell: window.SCHWARM_DATA fehlt. Lade-Reihenfolge der <script>-Tags in index.html prüfen.");
+  }
   const { FS, NPCS, OBJECTIVES } = window.SCHWARM_DATA;
 
 

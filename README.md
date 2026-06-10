@@ -40,7 +40,10 @@ Die Scripts laden in fester Reihenfolge (siehe `index.html`) und teilen sich den
 | `js/core.js` | DOM-Helfer, Terminal-Zeilen, Toasts, `escapeHtml` |
 | `js/state.js` | Spielstand: Laden/Speichern/Migration (`localStorage`), Savegame-Passphrasen |
 | `js/fs.js` | Operationen auf dem virtuellen Dateisystem (`getNode`, `readFile`, `cp`, …), Ordnerkarte |
-| `js/commands.js` | Befehls-Registry, man-Pages, Befehls-Implementierungen, NPC-Dialoge, Quest-Trigger |
+| `js/manpages.js` | `COMMAND_REGISTRY` (Befehls-Metadaten) + `MANUALS` (man-Texte) |
+| `js/npc-dialogs.js` | Generisches NPC-Dialog-System (Dialogbäume für Schüler-/Lehrer-NPCs) |
+| `js/quests.js` | Quest-Trigger, Phasen-Fortschritt, Phase-6-Script-Engine |
+| `js/commands.js` | Befehls-Implementierungen (`cmdImpl`), Autocomplete, `runLine`, Spezial-Dialoge |
 | `js/main.js` | UI-Verdrahtung: Eingabe, Overlays, Settings, Tutorial, Audio |
 
 ### Konventionen
@@ -55,7 +58,7 @@ Die Scripts laden in fester Reihenfolge (siehe `index.html`) und teilen sich den
 - **Quest-Ziel hinzufügen:** `OBJECTIVES` in `js/data.js` — Eintrag mit `phase`, `title`, `hint` und einer `done(state)`-Funktion. Der zugehörige Flag wird von einem Befehl/Trigger in `js/commands.js` gesetzt.
 - **Ort/Datei hinzufügen:** `js/data/fs.js` — Pfad als Key, `{ type:"dir"|"file", children|content }`. Ortsbeschreibungen (`LOC`) liegen ebenfalls dort.
 - **NPC hinzufügen:** `js/data/npcs.js` — `id`, `name`, `role`, `at:[Pfade]`. Generische NPCs bekommen automatisch Mehrstufen-Dialoge; Spezial-Dialoge leben in `case "talk"` in `js/commands.js`.
-- **Befehl hinzufügen:** Eintrag in `COMMAND_REGISTRY` (+ ausführliche man-Page in `MANUALS`) und ein `case` in `cmdImpl()` — beides in `js/commands.js`. Ggf. in `allowedCommands()` für die Phase freischalten.
+- **Befehl hinzufügen:** Eintrag in `COMMAND_REGISTRY` (+ ausführliche man-Page in `MANUALS`) in `js/manpages.js` und ein `case` in `cmdImpl()` in `js/commands.js`. Ggf. in `allowedCommands()` für die Phase freischalten.
 
 ## Didaktik
 

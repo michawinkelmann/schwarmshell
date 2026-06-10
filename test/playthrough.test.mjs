@@ -497,6 +497,42 @@ async function main(){
     });
   });
 
+  await suite("winkelmann sidequest", async ()=>{
+    await newGame(page);
+    await it("entering the hidden lab unlocks the sidequest", async ()=>{
+      await exec(page, "cd /school/keller/winkelmann_lab");
+      const s = await getState(page);
+      expect(s.sidequest.found_lab).toBe(true);
+    });
+    await it("talk winkelmann opens the topic menu", async ()=>{
+      await exec(page, "talk winkelmann");
+      const s = await getState(page);
+      expect(s.sidequest.unlocked).toBe(true);
+      expect(s.sidequest.dialog).toBe("winkelmann");
+      expect(await getTerminalText(page)).toContain("Wähle ein Thema");
+    });
+    await it("reacts to hot logs on one host", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = { gym:true }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("Ich rieche heiße Logs");
+    });
+    await it("reacts to hot logs on both hosts", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = { gym:true, igs:true }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("beide Logs brennen");
+    });
+    await it("warns when the trace meter is nearly full", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.traces = {}; state.sidequest.traceMeter = { gym: 80, igs: 0 }; saveState(); });
+      await exec(page, "talk winkelmann");
+      expect(await getTerminalText(page)).toContain("Trace‑Leiste ist fast voll");
+    });
+    await it("choose 4 shows the status submenu", async ()=>{
+      await exec(page, "choose 4");
+      const text = await getTerminalText(page);
+      expect(text).toContain("Winkelmann");
+    });
+  });
+
   await suite("difficulty", async ()=>{
     await newGame(page);
     await it("hardcore hides Clippy button", async ()=>{

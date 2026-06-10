@@ -959,8 +959,11 @@ const outText = (extra + open).trim();
 
       case "inventory":{
         const fr = state.fragments;
-        const fragLine = `Fragmente: FRAG1=${fr.f1||"—"}  FRAG2=${fr.f2||"—"}  FRAG3=${fr.f3||"—"}`;
         const inv = state.inventory.length ? state.inventory.join(", ") : "(leer)";
+        const lines = [
+          `Inventar: ${inv}`,
+          `Fragmente: FRAG1=${fr.f1||"—"}  FRAG2=${fr.f2||"—"}  FRAG3=${fr.f3||"—"}`
+        ];
         if(state.sidequest && state.sidequest.unlocked){
           lines.push("");
           lines.push("SIDEQUEST (Winkelmann):");
@@ -972,7 +975,7 @@ const outText = (extra + open).trim();
           lines.push(`  Spuren: gym=${t.gym?"🔴":"🟢"}  igs=${t.igs?"🔴":"🟢"}`);
           if(state.sidequest.badge) lines.push("  Badge: Physica potestas est ✅");
         }
-        return { ok:true, out:`Inventar: ${inv}\n${fragLine}` };
+        return { ok:true, out: lines.join("\n") };
       }
 
       case "unlock":{

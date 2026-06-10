@@ -653,6 +653,78 @@ async function main(){
     });
   });
 
+  await suite("core commands", async ()=>{
+    await newGame(page);
+    await it("man grep shows the learning-friendly manual", async ()=>{
+      await exec(page, "man grep");
+      expect(await getTerminalText(page)).toContain("WAS ES MACHT");
+    });
+    await it("hint points to the current objective", async ()=>{
+      await exec(page, "hint");
+      expect(await getTerminalText(page)).toContain("README");
+    });
+    await it("unknown command suggests the closest match", async ()=>{
+      await exec(page, "grpe glitch");
+      expect(await getTerminalText(page)).toContain("grep");
+    });
+    await it("pipes: cat | grep filters the output", async ()=>{
+      // grep ist in Phase 1 noch gesperrt — Pipe-Mechanik ab Phase 2 testen
+      await page.evaluate(()=>{ state.phase = 2; saveState(); });
+      await exec(page, "cat readme.txt | grep -i bash-befehlen");
+      expect(await getTerminalText(page)).toContain("Du steuerst alles mit Bash-Befehlen");
+    });
+    await it("pipe limit rejects more than two pipes", async ()=>{
+      await exec(page, "cat readme.txt | grep a | grep b | grep c");
+      expect(await getTerminalText(page)).toContain("Pipe-Limit");
+    });
+    await it("help - works for every objective key (incl. phase 6)", async ()=>{
+      // hint verweist auf "help - <key>" — jeder OBJECTIVES-Key braucht einen questHelp-Eintrag
+      for(const key of ["mentor_hub", "report_final", "scriptlab", "hello_script", "var_script", "cleanup_script"]){
+        await exec(page, `help - ${key}`);
+      }
+      const term = await getTerminalText(page);
+      expect(term).toContain("Hello-World-Skript");
+      if(term.includes("Keine Quest-Hilfe")) throw new Error("missing questHelp entry: " + term.split("\n").filter(l=>l.includes("Keine Quest-Hilfe")).join(" | "));
+    });
+    await it("inventory works with unlocked sidequest (regression: lines crash)", async ()=>{
+      await page.evaluate(()=>{ state.sidequest.unlocked = true; saveState(); });
+      await exec(page, "inventory");
+      const term = await getTerminalText(page);
+      expect(term).toContain("Inventar:");
+      expect(term).toContain("SIDEQUEST (Winkelmann)");
+    });
+  });
+
+  await suite("savegame passphrase", async ()=>{
+    await newGame(page);
+    await it("round-trip: export, wipe, import restores the run", async ()=>{
+      await execMany(page, ["cat readme.txt", "cd /school"]);
+      const phrase = await page.evaluate(()=>createSavePassphrase());
+      expect(phrase).toMatch(/^SS1\./);
+      await page.evaluate(()=>localStorage.clear());
+      await page.reload();
+      await page.waitForSelector("#startOverlay:not([hidden])", { timeout: 5000 });
+      await page.click("#startSavegame");
+      await page.fill("#savegamePassphrase", phrase);
+      await page.click("#savegameConfirm");
+      const s = await getState(page);
+      expect(s.cwd).toBe("/school");
+      expect(s.flags.introSeen).toBeTruthy();
+    });
+    await it("a corrupted passphrase shows an error instead of loading", async ()=>{
+      await page.evaluate(()=>localStorage.clear());
+      await page.reload();
+      await page.waitForSelector("#startOverlay:not([hidden])", { timeout: 5000 });
+      await page.click("#startSavegame");
+      await page.fill("#savegamePassphrase", "SS1.kaputt!!");
+      await page.click("#savegameConfirm");
+      const err = await page.evaluate(()=>document.getElementById("savegameLoadError").textContent);
+      expect(err).toContain("Passphrase");
+      // zurück in einen sauberen Zustand für nachfolgende Suiten
+      await newGame(page);
+    });
+  });
+
   await suite("difficulty", async ()=>{
     await newGame(page);
     await it("hardcore hides Clippy button", async ()=>{

@@ -391,22 +391,6 @@
     jobangebot: "/arbeitsamt"
   };
 
-  function objectiveKeyFromTitle(title){
-    const t = String(title || "").toLowerCase();
-    if(t.includes("tutorial")) return "tutorial";
-    if(t.includes("iserv")) return "iserv";
-    if(t.includes("keycard")) return "keycard";
-    if(t.includes("server-gate")) return "gate";
-    if(t.includes("fragment #1")) return "frag1";
-    if(t.includes("fragment #2")) return "frag2";
-    if(t.includes("fragment #3")) return "frag3";
-    if(t.includes("reality")) return "assemble";
-    if(t.includes("patchlord lokalisieren")) return "locate";
-    if(t.includes("hotfix")) return "hotfix";
-    if(t.includes("zeugnis abholen")) return "report";
-    return "quest";
-  }
-
   function getActiveObjectivePaths(){
     const active = OBJECTIVES.filter((o)=>o.phase===state.phase && !o.done(state));
     const nextObjective = active[0] || null;
@@ -420,7 +404,7 @@
     };
 
     if(nextObjective){
-      const maybeKey = String(nextObjective.key || objectiveKeyFromTitle(nextObjective.title)).trim().toLowerCase();
+      const maybeKey = objectiveKey(nextObjective);
       addPath(QUEST_PATH_BY_KEY[maybeKey]);
 
       const blob = `${nextObjective.title || ""} ${nextObjective.hint || ""}`;
@@ -652,7 +636,7 @@
     if(nextQuestHint){
       const nextObjective = getNextOpenObjective();
       if(nextObjective){
-        const key = escapeHtml(nextObjective.key || objectiveKeyFromTitle(nextObjective.title));
+        const key = escapeHtml(objectiveKey(nextObjective));
         const titleText = escapeHtml(nextObjective.title || "Nächstes Ziel");
         const shortDescription = escapeHtml(nextObjective.hint || "Kurzbeschreibung folgt im Ziele-Bereich.");
         nextQuestHint.innerHTML = `

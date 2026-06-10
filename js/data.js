@@ -65,34 +65,34 @@ Patterns in deinem Skript stehen — nicht, ob die Bash-Ausführung "richtig" is
 
 const OBJECTIVES = [
     // Phase 1 — Tutorial
-    { phase:1, title:"Tutorial starten", hint:"Lies zuerst die README. Da steht, was hier überhaupt abgeht.", done:(s)=>!!s.flags.introSeen },
+    { phase:1, title:"Tutorial starten", key:"tutorial", hint:"Lies zuerst die README. Da steht, was hier überhaupt abgeht.", done:(s)=>!!s.flags.introSeen },
     { phase:1, title:"iServ-Glitch untersuchen", key:"iserv", hint:"In der Schule gibt’s einen Raum mit PCs… da ist der Ursprung vom Glitch ziemlich sus.", done:(s)=>!!s.flags.iserv_glitch },
-    { phase:1, title:"KEYCARD besorgen", hint:"Irgendwo liegt ein Hinweis/Token, der nach ‚Zutritt‘ klingt. Schau dich in den PC-Ordnern um.", done:(s)=>!!s.flags.got_key },
-    { phase:1, title:"Server-Gate öffnen", hint:"Am Gate brauchst du den richtigen Code. Wenn du ihn hast: einmal sauber eingeben.", done:(s)=>!!s.flags.opened_gate },
+    { phase:1, title:"KEYCARD besorgen", key:"keycard", hint:"Irgendwo liegt ein Hinweis/Token, der nach ‚Zutritt‘ klingt. Schau dich in den PC-Ordnern um.", done:(s)=>!!s.flags.got_key },
+    { phase:1, title:"Server-Gate öffnen", key:"gate", hint:"Am Gate brauchst du den richtigen Code. Wenn du ihn hast: einmal sauber eingeben.", done:(s)=>!!s.flags.opened_gate },
 
     // Phase 2 — Quests / Fragmente
-    { phase:2, title:"Fragment #1 sichern", hint:"In den Patch-Logs versteckt sich ein Token. Such nach einem eindeutigen Wort/Tag.", done:(s)=>!!s.flags.frag1 },
-    { phase:2, title:"Fragment #2 craften", hint:"Du brauchst eine kleine ‚Werkbank‘ in deinem Home. Ordner + Datei = Loot-Slot.", done:(s)=>!!s.flags.frag2 },
-    { phase:2, title:"Fragment #3: Signal finden", hint:"Da gibt’s ein Signal in einer Datei. Such gezielt nach dem Signal und sichere das Fragment.", done:(s)=>!!s.flags.frag3 },
-    { phase:2, title:"Reality-Patch zusammenbauen", hint:"Wenn du alle 3 Fragmente hast, kannst du sie zu einem Patch kombinieren.", done:(s)=>!!s.flags.reality_patch },
+    { phase:2, title:"Fragment #1 sichern", key:"frag1", hint:"In den Patch-Logs versteckt sich ein Token. Such nach einem eindeutigen Wort/Tag.", done:(s)=>!!s.flags.frag1 },
+    { phase:2, title:"Fragment #2 craften", key:"frag2", hint:"Du brauchst eine kleine ‚Werkbank‘ in deinem Home. Ordner + Datei = Loot-Slot.", done:(s)=>!!s.flags.frag2 },
+    { phase:2, title:"Fragment #3: Signal finden", key:"frag3", hint:"Da gibt’s ein Signal in einer Datei. Such gezielt nach dem Signal und sichere das Fragment.", done:(s)=>!!s.flags.frag3 },
+    { phase:2, title:"Reality-Patch zusammenbauen", key:"assemble", hint:"Wenn du alle 3 Fragmente hast, kannst du sie zu einem Patch kombinieren.", done:(s)=>!!s.flags.reality_patch },
 
     // Phase 3 — Boss
     { phase:3, title:"Patchlord lokalisieren", key:"locate", hint:"Im Boss-Bereich liegt ein Script mit einem auffälligen Namen. Finde es gezielt.", done:(s)=>!!s.flags.found_boss },
-    { phase:3, title:"Bug-Zeile identifizieren", hint:"Im Script steht irgendwo ein eindeutiger Marker. Lass dir die Zeilennummern anzeigen.", done:(s)=>!!s.flags.inspected_boss },
+    { phase:3, title:"Bug-Zeile identifizieren", key:"bug", hint:"Im Script steht irgendwo ein eindeutiger Marker. Lass dir die Zeilennummern anzeigen.", done:(s)=>!!s.flags.inspected_boss },
     { phase:3, title:"Hotfix vorbereiten", key:"hotfix", hint:"Du kannst das Original nicht einfach überschreiben. Mach eine Kopie in deine Workbench und patch sie.", done:(s)=>!!s.flags.fixed_script },
-    { phase:3, title:"Script ausführbar machen", hint:"Wenn ein Script nicht starten will, fehlt oft ‚Erlaubnis‘. Das muss man fixen.", done:(s)=>!!s.flags.exec_script },
-    { phase:3, title:"Bossfight ausführen", hint:"Starte das Script mit den richtigen Tokens. Tippfehler = RIP.", done:(s)=>!!s.flags.escaped },
+    { phase:3, title:"Script ausführbar machen", key:"chmod", hint:"Wenn ein Script nicht starten will, fehlt oft ‚Erlaubnis‘. Das muss man fixen.", done:(s)=>!!s.flags.exec_script },
+    { phase:3, title:"Bossfight ausführen", key:"boss", hint:"Starte das Script mit den richtigen Tokens. Tippfehler = RIP.", done:(s)=>!!s.flags.escaped },
 
     // Phase 4 — Mentor / Multiplayer
-    { phase:4, title:"Mentor Hub betreten", hint:"Du bist jetzt in der Lobby. Check das Questboard und sprich die Squad-NPCs an.", done:(s)=>s.phase>=4 },
+    { phase:4, title:"Mentor Hub betreten", key:"mentor_hub", hint:"Du bist jetzt in der Lobby. Check das Questboard und sprich die Squad-NPCs an.", done:(s)=>s.phase>=4 },
     { phase:4, title:"Noah: Lag fixen", key:"lagfix", hint:"Noah hat 3-FPS-Vibes. Finde den Prozess, der alles frisst, und stoppe ihn.", done:(s)=>!!s.mentor?.lag_fixed },
-    { phase:4, title:"Emma: History-Detective", hint:"Emma hat den Überblick verloren. Du brauchst den Verlauf, um den Fehler zu sehen.", done:(s)=>!!s.mentor?.history_checked },
-    { phase:4, title:"Leo: QoL-Shortcut", hint:"Leo will Speedrun. Bau ihm einen Shortcut, damit er weniger tippen muss.", done:(s)=>!!s.mentor?.alias_made },
-    { phase:4, title:"Mentor-Run clear", hint:"Alles beendet oder läuft noch was?", done:(s)=>!!(s.mentor && s.mentor.clear_done) },
+    { phase:4, title:"Emma: History-Detective", key:"emma", hint:"Emma hat den Überblick verloren. Du brauchst den Verlauf, um den Fehler zu sehen.", done:(s)=>!!s.mentor?.history_checked },
+    { phase:4, title:"Leo: QoL-Shortcut", key:"leo", hint:"Leo will Speedrun. Bau ihm einen Shortcut, damit er weniger tippen muss.", done:(s)=>!!s.mentor?.alias_made },
+    { phase:4, title:"Mentor-Run clear", key:"mentor_clear", hint:"Alles beendet oder läuft noch was?", done:(s)=>!!(s.mentor && s.mentor.clear_done) },
   
     // Ende — Zeugnis-Arc
     { phase:3, title:"Zeugnis abholen", key:"report", hint:"Der Glitch ist weg? Dann ab ins Sekretariat: talk harries oder talk pietsch.", done:(s)=>!!s.flags.report_given },
-    { phase:4, title:"Finales Zeugnis verdienen", hint:"Hol dir Bonus Points (Sidequest) und komm dann nochmal ins Sekretariat.", done:(s)=>!!s.flags.report_final },
+    { phase:4, title:"Finales Zeugnis verdienen", key:"report_final", hint:"Hol dir Bonus Points (Sidequest) und komm dann nochmal ins Sekretariat.", done:(s)=>!!s.flags.report_final },
 
     // Phase 5 — Real Life
     // NOTE: Phase 5 braucht explizite Quest-Keys, damit "help - <questkey>" funktioniert.

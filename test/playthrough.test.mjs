@@ -533,6 +533,126 @@ async function main(){
     });
   });
 
+  await suite("winkelmann network mission", async ()=>{
+    await newGame(page);
+    await execMany(page, ["mkdir ~/workbench", "cd /school/keller/winkelmann_lab", "talk winkelmann"]);
+    await it("ritual is refused before requirements are met", async ()=>{
+      await exec(page, "choose 6");
+      expect(await getTerminalText(page)).toContain("Noch nicht");
+    });
+    await it("connect superpc activates the super pc", async ()=>{
+      await exec(page, "connect superpc");
+      const s = await getState(page);
+      expect(s.superpc && s.superpc.active).toBe(true);
+    });
+    await it("ssh gym-ost-core enters remote home and marks hot traces", async ()=>{
+      await exec(page, "ssh gym-ost-core");
+      const s = await getState(page);
+      expect(s.cwd).toBe("/net/gym-ost-core/home/guest");
+      expect(s.sidequest.traces.gym).toBe(true);
+    });
+    await it("scp blueprint.dat into the workbench counts the artifact", async ()=>{
+      await exec(page, "scp blueprint.dat ~/workbench/");
+      const s = await getState(page);
+      expect(s.sidequest.net.blueprint).toBe(true);
+    });
+    await it("logwipe cleans the host, exit returns to the super pc", async ()=>{
+      await execMany(page, ["logwipe", "exit"]);
+      const s = await getState(page);
+      expect(s.sidequest.traces.gym).toBe(false);
+      expect(s.cwd).toBe("/superpc");
+    });
+    await it("second host: shield.key from igs-edu-lab", async ()=>{
+      await execMany(page, ["ssh igs-edu-lab", "scp shield.key ~/workbench/", "logwipe", "exit"]);
+      const s = await getState(page);
+      expect(s.sidequest.net.shield).toBe(true);
+      expect(s.sidequest.traces.igs).toBe(false);
+    });
+    await it("ritual succeeds with parts, data and clean logs", async ()=>{
+      // SUPER-PC verlassen (talk ist ortsgebunden — Winkelmann steht im Lab)
+      await exec(page, "exit");
+      await page.evaluate(()=>{
+        writeFile("/home/player/workbench/photon_linse.part", "Linse", false);
+        writeFile("/home/player/workbench/gyro_spule.part", "Spule", false);
+        writeFile("/home/player/workbench/usv_modul.part", "USV", false);
+        saveState();
+      });
+      await execMany(page, ["talk winkelmann", "choose 6"]);
+      const s = await getState(page);
+      expect(s.sidequest.badge).toBe(true);
+      expect(await getTerminalText(page)).toContain("Maschine repariert");
+    });
+  });
+
+  await suite("phase5 job arc", async ()=>{
+    await newGame(page);
+    await page.evaluate(()=>{ state.flags.job_arc_unlocked = true; saveState(); });
+    await it("cd /arbeitsamt enters phase 5", async ()=>{
+      await exec(page, "cd /arbeitsamt");
+      const s = await getState(page);
+      expect(s.phase).toBe(5);
+      expect(s.flags.job_arc_started).toBeTruthy();
+    });
+    await it("talk beamter activates the job arc", async ()=>{
+      await exec(page, "talk beamter");
+      const s = await getState(page);
+      expect(s.jobArc && s.jobArc.active).toBe(true);
+    });
+    await it("snackmaster: grep allergene in the audit log", async ()=>{
+      await exec(page, "grep -i allergene /real_life/snackmaster/haccp_audit.log");
+      const s = await getState(page);
+      expect(s.jobArc.quests.snackmaster).toBe(true);
+    });
+    await it("ars: copying the pickup plan into the workbench", async ()=>{
+      await execMany(page, ["mkdir ~/workbench", "cp /real_life/ars_recycling/docs/abholplan_2026.csv ~/workbench/"]);
+      const s = await getState(page);
+      expect(s.jobArc.quests.ars).toBe(true);
+    });
+    await it("ohlendorf: ticket requires chmod before cat", async ()=>{
+      await execMany(page, ["cp /real_life/ohlendorf_technik/ticket_net.txt ~/workbench/", "cat ~/workbench/ticket_net.txt"]);
+      expect(await getTerminalText(page)).toContain("Permission denied");
+      await execMany(page, ["chmod 644 ~/workbench/ticket_net.txt", "cat ~/workbench/ticket_net.txt"]);
+      const s = await getState(page);
+      expect(s.jobArc.quests.ohlendorf).toBe(true);
+    });
+    await it("berndt: killing cnc_sim in the furniture factory", async ()=>{
+      await execMany(page, ["cd /real_life/berndt_moebel", "kill 909"]);
+      const s = await getState(page);
+      expect(s.jobArc.quests.berndt).toBe(true);
+    });
+    await it("cms: documented reports satisfy holger", async ()=>{
+      await execMany(page, [
+        "mkdir ~/workbench/cms",
+        "mkdir ~/workbench/cms/elektro",
+        "mkdir ~/workbench/cms/fliesen",
+        "mkdir ~/workbench/cms/dach",
+        "mkdir ~/workbench/cms/sanitaer",
+        "mkdir ~/workbench/cms/maler",
+        "mkdir ~/workbench/cms/abnahme",
+        'echo "SICHERUNGSLABEL: CMS-EL-2048" > ~/workbench/cms/elektro/bericht.txt',
+        'echo "FUGENMIX: STEINGRAU-7" > ~/workbench/cms/fliesen/bericht.txt',
+        'echo "DACHCODE: RINNE-R3" > ~/workbench/cms/dach/bericht.txt',
+        'echo "ROHRCHECK: DRUCK-1.6BAR" > ~/workbench/cms/sanitaer/bericht.txt',
+        'echo "FARBCODE: SAND-NEBEL-12" > ~/workbench/cms/maler/bericht.txt',
+        'echo "SICHERUNGSLABEL: CMS-EL-2048" > ~/workbench/cms/abnahme/uebersicht.txt',
+        'echo "FUGENMIX: STEINGRAU-7" >> ~/workbench/cms/abnahme/uebersicht.txt',
+        'echo "DACHCODE: RINNE-R3" >> ~/workbench/cms/abnahme/uebersicht.txt',
+        'echo "ROHRCHECK: DRUCK-1.6BAR" >> ~/workbench/cms/abnahme/uebersicht.txt',
+        'echo "FARBCODE: SAND-NEBEL-12" >> ~/workbench/cms/abnahme/uebersicht.txt',
+        "cd /real_life/cms",
+        "talk holger"
+      ]);
+      const s = await getState(page);
+      expect(s.jobArc.quests.cms).toBe(true);
+    });
+    await it("beamter hands over the final job offer", async ()=>{
+      await execMany(page, ["cd /arbeitsamt", "talk beamter"]);
+      const s = await getState(page);
+      expect(s.flags.job_arc_done).toBeTruthy();
+      expect(await getTerminalText(page)).toContain("Jobangebot");
+    });
+  });
+
   await suite("difficulty", async ()=>{
     await newGame(page);
     await it("hardcore hides Clippy button", async ()=>{

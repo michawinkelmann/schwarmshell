@@ -41,9 +41,9 @@ Die Scripts laden in fester Reihenfolge (siehe `index.html`) und teilen sich den
 | `js/state.js` | Spielstand: Laden/Speichern/Migration (`localStorage`), Savegame-Passphrasen |
 | `js/fs.js` | Operationen auf dem virtuellen Dateisystem (`getNode`, `readFile`, `cp`, …), Ordnerkarte |
 | `js/manpages.js` | `COMMAND_REGISTRY` (Befehls-Metadaten) + `MANUALS` (man-Texte) |
-| `js/npc-dialogs.js` | Generisches NPC-Dialog-System (Dialogbäume für Schüler-/Lehrer-NPCs) |
+| `js/npc-dialogs.js` | NPC-Dialog-System: Dialogbäume, `cmdTalk`/`cmdChoose` (alle Story-/Sidequest-Dialoge) |
 | `js/quests.js` | Quest-Trigger, Phasen-Fortschritt, Phase-6-Script-Engine |
-| `js/commands.js` | Befehls-Implementierungen (`cmdImpl`), Autocomplete, `runLine`, Spezial-Dialoge |
+| `js/commands.js` | Befehls-Implementierungen (`cmdImpl`), Autocomplete, `runLine` |
 | `js/main.js` | UI-Verdrahtung: Eingabe, Overlays, Settings, Tutorial, Audio |
 
 ### Konventionen
